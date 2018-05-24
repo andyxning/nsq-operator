@@ -14,15 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package version provides version information collected at build time
-// to nsq-operator.
-package version
+// Package metric registers nsq-operator related handler for Prometheus
+// metrics.
+package metric
 
 import (
-	apimachinaryversion "k8s.io/apimachinery/pkg/version"
-	"k8s.io/kubernetes/pkg/version"
+	"net/http"
+
+	_ "github.com/andyxning/nsq-operator/pkg/version/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func Get() apimachinaryversion.Info {
-	return version.Get()
+func RegisterPrometheusMetrics() {
+	http.Handle("/metrics", promhttp.Handler())
 }

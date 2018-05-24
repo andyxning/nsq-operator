@@ -31,7 +31,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -121,3 +121,5 @@ venv.bak/
 .mypy_cache/
 
 .idea/
+/cmd/nsq-operator/nsq-operator
+/nsq-operator
