@@ -16,12 +16,17 @@ limitations under the License.
 
 package main
 
-import "github.com/andyxning/nsq-operator/pkg/signal"
+import (
+	"net/http"
 
-func main() {
-	registerHttpHandler()
-	go startHttpServer()
+	"github.com/andyxning/nsq-operator/pkg/metric"
+	"github.com/golang/glog"
+)
 
-	stopCh := signal.SetupSignalHandler()
-	<-stopCh
+func registerHttpHandler() {
+	metric.RegisterPrometheusMetrics()
+}
+
+func startHttpServer() {
+	glog.Fatal(http.ListenAndServe(":3080", nil))
 }

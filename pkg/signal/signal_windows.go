@@ -14,14 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package signals
 
-import "github.com/andyxning/nsq-operator/pkg/signal"
+import (
+	"os"
+)
 
-func main() {
-	registerHttpHandler()
-	go startHttpServer()
-
-	stopCh := signal.SetupSignalHandler()
-	<-stopCh
-}
+var shutdownSignals = []os.Signal{os.Interrupt}

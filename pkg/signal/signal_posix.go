@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
 Copyright 2018 The NSQ-Operator Authors.
 
@@ -14,14 +16,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package signal
 
-import "github.com/andyxning/nsq-operator/pkg/signal"
+import (
+	"os"
+	"syscall"
+)
 
-func main() {
-	registerHttpHandler()
-	go startHttpServer()
-
-	stopCh := signal.SetupSignalHandler()
-	<-stopCh
-}
+var shutdownSignals = []os.Signal{os.Interrupt, syscall.SIGTERM}
