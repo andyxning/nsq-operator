@@ -22,7 +22,7 @@
 # IMPORTANT: this version script is modified based on the ./hack/lib/version.sh
 # from Kubernetes main repo.
 
-PKG_ROOT="github.com/andyxning/nsq-operator"
+PKG_PREFIX="github.com/andyxning/nsq-operator"
 REPO_ROOT=$(dirname ${BASH_SOURCE})/..
 
 # Generate version related variables through git.
@@ -88,7 +88,7 @@ version::ldflag() {
   local key=${1}
   local val=${2}
 
-  echo "-X '${PKG_ROOT}/vendor/k8s.io/kubernetes/pkg/version.${key}=${val}'"
+  echo "-X '${PKG_PREFIX}/vendor/k8s.io/kubernetes/pkg/version.${key}=${val}'"
 }
 
 # Prints the value that needs to be passed to the -ldflags parameter of go build

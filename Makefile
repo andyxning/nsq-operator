@@ -3,8 +3,10 @@ NSQ_COMPONENTS := nsqd nsqlookupd nsqadmin
 nsq-images := $(addprefix .image-, ${NSQ_COMPONENTS})
 ldflags := $(shell ./hack/version.sh)
 
+PKG_PREFIX := github.com/andyxning/nsq-operator
+
 build:
-	go build -ldflags="${ldflags}" -o nsq-operator cmd/nsq-operator/nsq-operator.go
+	go build -ldflags="${ldflags}" -o nsq-operator ${PKG_PREFIX}/cmd/nsq-operator
 
 
 images: ${nsq-images}
