@@ -14,7 +14,7 @@ There are two solutions to run Nsqd:
 [`supervisord`](http://supervisord.org/), to guard Nsqd instance
 * Make Nsqd instance be the PID 1 process
 
-Both `systemd` and `supervisor` does not support transmiting received
+Both `systemd` and `supervisor` do not support transmiting received
 signals to its hosted services. Actually, most hosting service does
 not support transmiting received `SIGTERM` signal to its guarded
 services. So it seems that solution one is not an option.
