@@ -51,6 +51,6 @@ trap _int SIGINT
 
 LOG_DIR=${LOG_DIR:-"/var/log/"}
 
-nsqadmin | /usr/bin/cronolog_alpine ${LOG_DIR}/nsqadmin/log.%Y-%m-%d_%H &
+nsqadmin | /usr/local/bin/cronolog_alpine ${LOG_DIR}/nsqadmin/log.%Y-%m-%d_%H &
 
 wait
