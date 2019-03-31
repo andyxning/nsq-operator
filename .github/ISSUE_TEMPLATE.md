@@ -22,7 +22,7 @@ Briefly describe the problem you are having in a few paragraphs.
 **Describe the results you expected:**
 
 
-**Output of `heapster --version`:**
+**Output of `nsq-operator --version`:**
 
 ```
 (paste your output here)
