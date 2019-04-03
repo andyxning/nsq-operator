@@ -20,13 +20,13 @@ import (
 	"net/http"
 
 	"github.com/andyxning/nsq-operator/pkg/metric"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 func registerHttpHandler() {
 	metric.RegisterPrometheusMetrics()
 }
 
-func startHttpServer() {
-	glog.Fatal(http.ListenAndServe(":3080", nil))
+func startHttpServer(address string) {
+	klog.Fatal(http.ListenAndServe(address, nil))
 }

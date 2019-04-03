@@ -13,4 +13,10 @@ images: ${nsq-images}
 .image-%:
 	$(MAKE) --no-print-directory -C images $*
 
-.PHONY: images build
+gen-code:
+	./hack/update-codegen.sh
+
+verify-codegen:
+	./hack/verify-codegen.sh
+
+.PHONY: images build gen-code verify-codegen

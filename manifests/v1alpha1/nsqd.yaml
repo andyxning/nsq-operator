@@ -1,0 +1,37 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: nsqds.nsq.io
+spec:
+  group: nsq.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    kind: Nsqd
+    plural: nsqds
+    singular: nsqd
+    shortNames:
+      - nsqd
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            replicas:
+              type: integer
+              minimum: 1
+              maximum: 2048
+            image:
+              type: string
+            command:
+              type: string
+            args:
+              type: array
+              items:
+                type: string
+
+
+

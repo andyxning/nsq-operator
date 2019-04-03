@@ -27,7 +27,7 @@ func init() {
 	versionInfoMetric := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "nsq_operator_version_info",
-			Help: "A metric with a constant '1' value labeled by major, minor, git version, git commit, git tree state, build date, Go version, and compiler from which NSQ-Operator was built, and platform on which it is running.",
+			Help: "A metric with a constant '1' value labeled by major, minor, git version, git commit, git tree state, build date, Go version, compiler from which NSQ-Operator was built, and platform on which it is running.",
 		},
 		[]string{"major", "minor", "gitVersion", "gitCommit", "gitTreeState", "buildDate", "goVersion", "compiler", "platform"},
 	)

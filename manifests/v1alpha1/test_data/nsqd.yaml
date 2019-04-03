@@ -1,0 +1,7 @@
+apiVersion: "nsq.io/v1alpha1"
+kind: Nsqd
+metadata:
+  name: test
+spec:
+  replicas: 2
+  image: nsqd:0.3.8

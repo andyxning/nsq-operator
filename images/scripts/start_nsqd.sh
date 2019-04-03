@@ -49,7 +49,7 @@ _int() {
 trap _term SIGTERM
 trap _int SIGINT
 
-LOG_DIR=${LOG_DIR:-"/var/log/"}
+LOG_DIR=${LOG_DIR:-"/var/log"}
 
 nsqd | /usr/local/bin/cronolog_alpine ${LOG_DIR}/nsqd/log.%Y-%m-%d_%H &
 
