@@ -49,8 +49,12 @@ _int() {
 trap _term SIGTERM
 trap _int SIGINT
 
-LOG_DIR=${LOG_DIR:-"/var/log"}
+LOG_DIR=${LOG_DIR:-"/var/log/nsqlookupd"}
 
-nsqlookupd | /usr/local/bin/cronolog_alpine ${LOG_DIR}/nsqlookupd/log.%Y-%m-%d_%H &
+mkdir -p $LOG_DIR
+
+source /etc/nsq/nsqlookupd
+
+nsqlookupd --http-address=$NSQLOOKUPD_HTTP_ADDRESS --tcp-address=$NSQLOOKUPD_TCP_ADDRESS -meta-path=$NSQLOOKUPD_META_PATH | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait

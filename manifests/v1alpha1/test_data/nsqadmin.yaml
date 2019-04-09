@@ -1,7 +1,7 @@
 apiVersion: "nsq.io/v1alpha1"
 kind: NsqAdmin
 metadata:
-  name: test
+  name: solo 
 spec:
   replicas: 2
   image: dockerops123/nsqadmin:0.3.8

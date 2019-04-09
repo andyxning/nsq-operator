@@ -49,10 +49,12 @@ _int() {
 trap _term SIGTERM
 trap _int SIGINT
 
-LOG_DIR=${LOG_DIR:-"/var/log"}
+LOG_DIR=${LOG_DIR:-"/var/log/nsqadmin"}
+
+mdkir -p $LOG_DIR
 
 source /etc/nsq/nsqadmin
 
-nsqadmin --http-address=$NSQADMIN_HTTP_ADDRESS --lookupd-http-address=$NSQADMIN_LOOKUPD_HTTP_ADDRESS | /usr/local/bin/cronolog_alpine ${LOG_DIR}/nsqadmin/log.%Y-%m-%d_%H &
+nsqadmin --http-address=$NSQADMIN_HTTP_ADDRESS --lookupd-http-address=$NSQADMIN_LOOKUPD_HTTP_ADDRESS | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait

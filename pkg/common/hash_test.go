@@ -17,7 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"bytes"
 	"testing"
 )
 
@@ -52,7 +51,7 @@ func TestHash(t *testing.T) {
 		t.Fatalf("Hash third content error: %v", err)
 	}
 
-	if !(bytes.Equal(firstHash, secondHash) && bytes.Equal(secondHash, thirdHash)) {
+	if !(firstHash == secondHash && secondHash == thirdHash) {
 		t.Fatalf("hash different sequence map with same key/value pairs error.\n"+
 			"First: %v, Hash: %v.\n"+
 			"Second: %v, Hash: %v.\n"+

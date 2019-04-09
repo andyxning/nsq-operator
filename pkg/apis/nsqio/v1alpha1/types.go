@@ -73,7 +73,7 @@ type NsqLookupdSpec struct {
 
 // NsqLookupdStatus is the status for a NsqLookupd resource
 type NsqLookupdStatus struct {
-	AvailableReplicas int32 `json:"availableReplicas"`
+	Replicas int32 `json:"replicas"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
