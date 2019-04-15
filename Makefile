@@ -16,7 +16,10 @@ images: ${nsq-images}
 gen-code:
 	./hack/update-codegen.sh
 
+update-gen-tool:
+	./hack/update-codegen-tool.sh
+
 verify-codegen:
 	./hack/verify-codegen.sh
 
-.PHONY: images build gen-code verify-codegen
+.PHONY: images build gen-code verify-codegen update-gen-tool
