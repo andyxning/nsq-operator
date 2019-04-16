@@ -872,6 +872,11 @@
 			"Rev": "10bf64c7018d1bf6b021767df5126dec74b08010"
 		},
 		{
+			"ImportPath": "k8s.io/apiserver/pkg/server/healthz",
+			"Comment": "kubernetes-1.10.0-alpha.3-1291-gd28722d",
+			"Rev": "d28722dbb43a1a3e28373f575cc366664fc77ec9"
+		},
+		{
 			"ImportPath": "k8s.io/client-go/discovery",
 			"Comment": "kubernetes-1.14.0-alpha.1-173-g4009d98",
 			"Rev": "4009d98e83384a22714b5ea6ba2b9f8862254a0c"

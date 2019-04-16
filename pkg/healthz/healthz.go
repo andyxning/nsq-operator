@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The NSQ-Operator Authors.
+Copyright 2019 The NSQ-Operator Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,21 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package healthz
 
-import (
-	"net/http"
+import "k8s.io/apiserver/pkg/server/healthz"
 
-	"github.com/andyxning/nsq-operator/pkg/healthz"
-	"github.com/andyxning/nsq-operator/pkg/metric"
-	"k8s.io/klog"
-)
-
-func registerHttpHandler() {
-	metric.RegisterPrometheusMetrics()
-	healthz.RegisterHealthz()
-}
-
-func startHttpServer(address string) {
-	klog.Fatal(http.ListenAndServe(address, nil))
+func RegisterHealthz() {
+	healthz.DefaultHealthz(healthz.PingHealthz, healthz.LogHealthz)
 }
