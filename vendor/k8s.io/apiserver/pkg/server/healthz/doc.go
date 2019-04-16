@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The NSQ-Operator Authors.
+Copyright 2014 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,21 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
-
-import (
-	"net/http"
-
-	"github.com/andyxning/nsq-operator/pkg/healthz"
-	"github.com/andyxning/nsq-operator/pkg/metric"
-	"k8s.io/klog"
-)
-
-func registerHttpHandler() {
-	metric.RegisterPrometheusMetrics()
-	healthz.RegisterHealthz()
-}
-
-func startHttpServer(address string) {
-	klog.Fatal(http.ListenAndServe(address, nil))
-}
+// Package healthz implements basic http server health checking.
+// Usage:
+//   import "k8s.io/apiserver/pkg/server/healthz"
+//   healthz.DefaultHealthz()
+package healthz
