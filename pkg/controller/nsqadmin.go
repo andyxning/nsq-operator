@@ -22,8 +22,8 @@ import (
 
 	"github.com/andyxning/nsq-operator/pkg/apis/nsqio"
 	"github.com/andyxning/nsq-operator/pkg/common"
-	"github.com/andyxning/nsq-operator/pkg/constant"
 	"github.com/andyxning/nsq-operator/pkg/generated/informers/externalversions/nsqio/v1alpha1"
+	"github.com/andyxning/nsq-operator/pkg/variable"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -94,7 +94,7 @@ func NewNsqAdminController(kubeClientSet kubernetes.Interface,
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClientSet.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: constant.NsqAdminControllerName})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: variable.NsqAdminControllerName})
 
 	controller := &NsqAdminController{
 		kubeClientSet:     kubeClientSet,
@@ -328,19 +328,19 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	// a warning to the event recorder and return
 	if !metav1.IsControlledBy(deployment, na) {
 		deployment.GetCreationTimestamp()
-		msg := fmt.Sprintf(constant.MessageResourceExists, deployment.Name)
+		msg := fmt.Sprintf(variable.MessageResourceExists, deployment.Name)
 		nac.recorder.Event(na, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
 		return fmt.Errorf(msg)
 	}
 
 	klog.V(6).Infof("New configmap hash: %v", string(configmapHash))
-	klog.V(6).Infof("Old configmap hash: %v", deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
+	klog.V(6).Infof("Old configmap hash: %v", deployment.Spec.Template.Annotations[variable.NsqConfigMapAnnotationKey])
 	klog.V(6).Infof("New configmap data: %v", configmap.Data)
-	if deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != string(configmapHash) {
+	if deployment.Spec.Template.Annotations[variable.NsqConfigMapAnnotationKey] != string(configmapHash) {
 		klog.Infof("New configmap detected. New config: %v", configmap.Data)
 		deploymentCopy := deployment.DeepCopy()
 		deploymentCopy.Spec.Template.Annotations = map[string]string{
-			constant.NsqConfigMapAnnotationKey: string(configmapHash),
+			variable.NsqConfigMapAnnotationKey: string(configmapHash),
 		}
 		deploymentNew, err := nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
 
@@ -351,7 +351,7 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 		// If no error occurs, just return to give kubernetes some time to make
 		// adjustment according to the new spec.
 		klog.V(6).Infof("Update deployment %v under configmap change error: %v", deploymentCopy.Name, err)
-		klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deploymentCopy.Name, []byte(deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey]))
+		klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deploymentCopy.Name, []byte(deploymentNew.Spec.Template.Annotations[variable.NsqConfigMapAnnotationKey]))
 		return err
 	}
 
@@ -477,7 +477,7 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, cfs strin
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 					Annotations: map[string]string{
-						constant.NsqConfigMapAnnotationKey: cfs,
+						variable.NsqConfigMapAnnotationKey: cfs,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -488,10 +488,20 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, cfs strin
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      common.NsqAdminConfigMapName(na.Name),
-									MountPath: constant.NsqConfigMapMountPath,
+									MountPath: variable.NsqConfigMapMountPath,
 								},
 							},
 							ImagePullPolicy: corev1.PullAlways,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    variable.NsqAdminCPULimit,
+									corev1.ResourceMemory: variable.NsqAdminMemoryLimit,
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    variable.NsqAdminCPURequest,
+									corev1.ResourceMemory: variable.NsqAdminMemoryRequest,
+								},
+							},
 						},
 					},
 					Volumes: []corev1.Volume{{

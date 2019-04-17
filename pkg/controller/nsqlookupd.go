@@ -22,8 +22,8 @@ import (
 
 	"github.com/andyxning/nsq-operator/pkg/apis/nsqio"
 	"github.com/andyxning/nsq-operator/pkg/common"
-	"github.com/andyxning/nsq-operator/pkg/constant"
 	"github.com/andyxning/nsq-operator/pkg/generated/informers/externalversions/nsqio/v1alpha1"
+	"github.com/andyxning/nsq-operator/pkg/variable"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -94,7 +94,7 @@ func NewNsqLookupdController(kubeClientSet kubernetes.Interface,
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClientSet.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: constant.NsqLookupdControllerName})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: variable.NsqLookupdControllerName})
 
 	controller := &NsqLookupdController{
 		kubeClientSet:      kubeClientSet,
@@ -328,19 +328,19 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	// a warning to the event recorder and return
 	if !metav1.IsControlledBy(statefulset, na) {
 		statefulset.GetCreationTimestamp()
-		msg := fmt.Sprintf(constant.MessageResourceExists, statefulset.Name)
+		msg := fmt.Sprintf(variable.MessageResourceExists, statefulset.Name)
 		nlc.recorder.Event(na, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
 		return fmt.Errorf(msg)
 	}
 
 	klog.V(6).Infof("New configmap hash: %v", string(configmapHash))
-	klog.V(6).Infof("Old configmap hash: %v", statefulset.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
+	klog.V(6).Infof("Old configmap hash: %v", statefulset.Spec.Template.Annotations[variable.NsqConfigMapAnnotationKey])
 	klog.V(6).Infof("New configmap data: %v", configmap.Data)
-	if statefulset.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != string(configmapHash) {
+	if statefulset.Spec.Template.Annotations[variable.NsqConfigMapAnnotationKey] != string(configmapHash) {
 		klog.Infof("New configmap detected. New config: %v", configmap.Data)
 		statefulsetCopy := statefulset.DeepCopy()
 		statefulsetCopy.Spec.Template.Annotations = map[string]string{
-			constant.NsqConfigMapAnnotationKey: string(configmapHash),
+			variable.NsqConfigMapAnnotationKey: string(configmapHash),
 		}
 		statefulsetNew, err := nlc.kubeClientSet.AppsV1().StatefulSets(na.Namespace).Update(statefulsetCopy)
 
@@ -351,7 +351,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		// If no error occurs, just return to give kubernetes some time to make
 		// adjustment according to the new spec.
 		klog.V(6).Infof("Update statefulset %v under configmap change error: %v", statefulsetCopy.Name, err)
-		klog.V(6).Infof("New statefulset %v annotation under configmap change: %v", statefulsetCopy.Name, []byte(statefulsetNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey]))
+		klog.V(6).Infof("New statefulset %v annotation under configmap change: %v", statefulsetCopy.Name, []byte(statefulsetNew.Spec.Template.Annotations[variable.NsqConfigMapAnnotationKey]))
 		return err
 	}
 
@@ -477,7 +477,7 @@ func (nlc *NsqLookupdController) newStatefulset(na *nsqv1alpha1.NsqLookupd, cfs 
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 					Annotations: map[string]string{
-						constant.NsqConfigMapAnnotationKey: cfs,
+						variable.NsqConfigMapAnnotationKey: cfs,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -488,7 +488,7 @@ func (nlc *NsqLookupdController) newStatefulset(na *nsqv1alpha1.NsqLookupd, cfs 
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      common.NsqLookupdConfigMapName(na.Name),
-									MountPath: constant.NsqConfigMapMountPath,
+									MountPath: variable.NsqConfigMapMountPath,
 								},
 							},
 							ImagePullPolicy: corev1.PullAlways,
