@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nsq-operator
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: nsq-operator
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: nsq-operator
+    spec:
+      containers:
+        - name: nsq-operator
+          image: dockerops123/nsq-operator:v0.2.0
+          ports:
+            - name: http-metrics
+              containerPort: 3080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3080
+            initialDelaySeconds: 4
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: "1",
+              memory: "1Gi"
+            limits:
+              cpu: "1",
+              memory: "1Gi"

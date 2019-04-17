@@ -1,4 +1,5 @@
 NSQ_COMPONENTS := nsqd nsqlookupd nsqadmin
+NSQ_OPERATOR_VERSION := 0.2.0
 
 nsq-images := $(addprefix .image-, ${NSQ_COMPONENTS})
 ldflags := $(shell ./hack/version.sh)
@@ -14,7 +15,7 @@ fmt:
 test:
 	go test -timeout=1m -v -race $(shell go list ./...)
 
-build:
+build: clean
 	go build -ldflags="${ldflags}" -o nsq-operator ${PKG_PREFIX}/cmd/nsq-operator
 
 images: ${nsq-images}
@@ -22,7 +23,7 @@ images: ${nsq-images}
 	$(MAKE) --no-print-directory -C images $*
 
 nsq-operator-image: build
-	docker build --no-cache --build-arg go_version=${GO_VERSION} -t $*:${NSQ_VERSION} -f $*.Dockerfile .
+	docker build --no-cache -t nsq-operator:${NSQ_OPERATOR_VERSION} -f Dockerfile .
 
 gen-code:
 	./hack/update-codegen.sh
@@ -33,4 +34,7 @@ update-gen-tool:
 verify-codegen:
 	./hack/verify-codegen.sh
 
-.PHONY: test fmt vet images build gen-code verify-codegen update-gen-tool nsq-operator-image
+clean:
+	rm -f nsq-operator
+
+.PHONY: clean test fmt vet images build gen-code verify-codegen update-gen-tool nsq-operator-image
