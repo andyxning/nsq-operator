@@ -12,7 +12,7 @@ fmt:
 	find . -type f -name "*.go" | grep -v "./vendor/*" | xargs gofmt -s -w -l
 
 test:
-	go test -timeout=1m -v -race $(go list ./...) 
+	go test -timeout=1m -v -race $(shell go list ./...)
 
 build:
 	go build -ldflags="${ldflags}" -o nsq-operator ${PKG_PREFIX}/cmd/nsq-operator

@@ -10,7 +10,7 @@ ENV GO_VERSION=${go_version}
 
 RUN wget -q https://github.com/nsqio/nsq/releases/download/v${NSQ_VERSION}/nsq-${NSQ_VERSION}.linux-amd64.go${GO_VERSION}.tar.gz -O - \
 | tar -C /usr/local/bin --strip-components=2 -zxv -f -
-RUN apk add --no-cache bash bash-doc bash-completion
+RUN apk update && apk add --no-cache bash bash-doc bash-completion
 
 COPY ./scripts /usr/local/bin/
 COPY ./bin /usr/local/bin/
