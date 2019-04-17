@@ -1,0 +1,23 @@
+sudo: required
+os: linux
+dist: xenial
+
+language: go
+go:
+    - "1.12.x"
+
+install:
+- mkdir -p $HOME/gopath/src/github.com/andyxning
+- mv $TRAVIS_BUILD_DIR $HOME/gopath/src/github.com/andyxning/nsq-operator
+- cd $HOME/gopath/src/github.com/andyxning/nsq-operator
+
+jobs:
+  include:
+    # fmt
+    - script: make fmt
+    # vet
+    - script: make vet
+    # Unit Test
+    - script: make test
+    # Build
+    - script: make build
