@@ -21,9 +21,12 @@ package metric
 import (
 	"net/http"
 
-	_ "github.com/andyxning/nsq-operator/pkg/version/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+func init() {
+	initVersionMetric()
+}
 
 func RegisterPrometheusMetrics() {
 	http.Handle("/metrics", promhttp.Handler())

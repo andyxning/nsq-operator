@@ -14,16 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package prometheus registers nsq-operator version information as
-// Prometheus metrics.
-package prometheus
+package metric
 
 import (
 	"github.com/andyxning/nsq-operator/pkg/version"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func init() {
+func initVersionMetric() {
 	versionInfoMetric := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "nsq_operator_version_info",
