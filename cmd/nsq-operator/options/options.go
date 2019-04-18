@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog"
 )
 
@@ -33,6 +34,26 @@ type Options struct {
 	LeaseID        string
 	LeaseName      string
 	LeaseNamespace string
+
+	nsqAdminCPULimit      string
+	nsqAdminCPURequest    string
+	nsqAdminMemoryLimit   string
+	nsqAdminMemoryRequest string
+
+	nsqLookupdCPULimit      string
+	nsqLookupdCPURequest    string
+	nsqLookupdMemoryLimit   string
+	nsqLookupdMemoryRequest string
+
+	NsqAdminCPULimitResource      resource.Quantity
+	NsqAdminCPURequestResource    resource.Quantity
+	NsqAdminMemoryLimitResource   resource.Quantity
+	NsqAdminMemoryRequestResource resource.Quantity
+
+	NsqLookupdCPULimitResource      resource.Quantity
+	NsqLookupdCPURequestResource    resource.Quantity
+	NsqLookupdMemoryLimitResource   resource.Quantity
+	NsqLookupdMemoryRequestResource resource.Quantity
 
 	Version bool
 }
@@ -59,8 +80,27 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.LeaseNamespace, "lease-namespace", "default", "The lease lock resource namespace")
 	pflag.BoolVar(&o.Version, "version", false, "Print version")
 
+	pflag.StringVar(&o.nsqAdminMemoryLimit, "nsqadmin-mem-limit", "200Mi", "Memory limit resource value for a nsqadmin instance")
+	pflag.StringVar(&o.nsqAdminCPULimit, "nsqadmin-cpu-limit", "300m", "CPU limit resource value for a nsqadmin instance")
+	pflag.StringVar(&o.nsqAdminMemoryRequest, "nsqadmin-mem-request", "200Mi", "Memory request resource value for a nsqadmin instance")
+	pflag.StringVar(&o.nsqAdminCPURequest, "nsqadmin-cpu-request", "300m", "CPU request resource value for a nsqadmin instance")
+
+	pflag.StringVar(&o.nsqLookupdMemoryLimit, "nsqlookupd-mem-limit", "200Mi", "Memory limit resource value for a nsqlookupd instance")
+	pflag.StringVar(&o.nsqLookupdCPULimit, "nsqlookupd-cpu-limit", "300m", "CPU limit resource value for a nsqlookupd instance")
+	pflag.StringVar(&o.nsqLookupdMemoryRequest, "nsqlookupd-mem-request", "200Mi", "Memory request resource value for a nsqlookupd instance")
+	pflag.StringVar(&o.nsqLookupdCPURequest, "nsqlookupd-cpu-request", "300m", "CPU request resource value for a nsqlookupd instance")
 }
 
-func (o *Options) Parse() {
+func (o *Options) MustParse() {
 	pflag.Parse()
+
+	o.NsqAdminCPULimitResource = resource.MustParse(o.nsqAdminCPULimit)
+	o.NsqAdminMemoryLimitResource = resource.MustParse(o.nsqAdminMemoryLimit)
+	o.NsqAdminCPURequestResource = resource.MustParse(o.nsqAdminCPURequest)
+	o.NsqAdminMemoryRequestResource = resource.MustParse(o.nsqAdminMemoryRequest)
+
+	o.NsqLookupdCPULimitResource = resource.MustParse(o.nsqLookupdCPULimit)
+	o.NsqLookupdMemoryLimitResource = resource.MustParse(o.nsqLookupdMemoryLimit)
+	o.NsqLookupdCPURequestResource = resource.MustParse(o.nsqLookupdCPURequest)
+	o.NsqLookupdMemoryRequestResource = resource.MustParse(o.nsqLookupdMemoryLimit)
 }

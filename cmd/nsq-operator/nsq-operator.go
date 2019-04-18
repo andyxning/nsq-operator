@@ -46,7 +46,7 @@ import (
 func main() {
 	opts := options.NewOptions()
 	opts.MustRegisterFlags()
-	opts.Parse()
+	opts.MustParse()
 
 	if opts.Version {
 		fmt.Printf("%#v\n", version.Get())
@@ -120,12 +120,12 @@ func main() {
 				kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*10)
 				nsqInformerFactory := nsqinformers.NewSharedInformerFactory(nsqClient, time.Second*10)
 
-				nsqAdminController := controller.NewNsqAdminController(kubeClient, nsqClient,
+				nsqAdminController := controller.NewNsqAdminController(opts, kubeClient, nsqClient,
 					kubeInformerFactory.Apps().V1().Deployments(),
 					kubeInformerFactory.Core().V1().ConfigMaps(),
 					nsqInformerFactory.Nsq().V1alpha1().NsqAdmins())
 
-				nsqLookupdController := controller.NewNsqLookupdController(kubeClient, nsqClient,
+				nsqLookupdController := controller.NewNsqLookupdController(opts, kubeClient, nsqClient,
 					kubeInformerFactory.Apps().V1().StatefulSets(),
 					kubeInformerFactory.Core().V1().ConfigMaps(),
 					nsqInformerFactory.Nsq().V1alpha1().NsqLookupds())
