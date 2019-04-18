@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
         - name: nsq-operator
-          image: dockerops123/nsq-operator:v0.2.0
+          image: dockerops123/nsq-operator:0.2.0
+          imagePullPolicy: Always
           ports:
             - name: http-metrics
               containerPort: 3080
@@ -27,8 +28,8 @@ spec:
             timeoutSeconds: 2
           resources:
             requests:
-              cpu: "1",
-              memory: "1Gi"
+              cpu: "0.1"
+              memory: "500Mi"
             limits:
-              cpu: "1",
-              memory: "1Gi"
+              cpu: "0.1"
+              memory: "500Mi"

@@ -1,5 +1,6 @@
 NSQ_COMPONENTS := nsqd nsqlookupd nsqadmin
 NSQ_OPERATOR_VERSION := 0.2.0
+GOLANG_VERSION := 1.12.4
 
 nsq-images := $(addprefix .image-, ${NSQ_COMPONENTS})
 ldflags := $(shell ./hack/version.sh)
@@ -22,8 +23,9 @@ images: ${nsq-images}
 .image-%:
 	$(MAKE) --no-print-directory -C images $*
 
-nsq-operator-image: build
-	docker build --no-cache -t nsq-operator:${NSQ_OPERATOR_VERSION} -f Dockerfile .
+nsq-operator-image:
+	docker run --rm -v "$(shell pwd)":/go/src/${PKG_PREFIX} -w /go/src/${PKG_PREFIX} golang:${GOLANG_VERSION} make build
+	docker build --no-cache --build-arg GOLANG_VERSION=${GOLANG_VERSION} -t nsq-operator:${NSQ_OPERATOR_VERSION} -f Dockerfile .
 
 gen-code:
 	./hack/update-codegen.sh

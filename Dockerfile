@@ -1,8 +1,7 @@
-FROM alpine:3.9
+ARG GOLANG_VERSION=latest
+FROM golang:${GOLANG_VERSION}
 
 LABEL maintainer="Andy Xie <andy.xning@gmail.com>"
-
-RUN apk update && apk add --no-cache bash bash-doc bash-completion
 
 COPY ./nsq-operator /usr/local/bin/
 
