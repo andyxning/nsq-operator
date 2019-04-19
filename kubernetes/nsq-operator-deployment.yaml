@@ -26,6 +26,14 @@ spec:
               port: 3080
             initialDelaySeconds: 4
             timeoutSeconds: 2
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3080
+            initialDelaySeconds: 4
+            timeoutSeconds: 2
+            periodSeconds: 30
           resources:
             requests:
               cpu: "0.1"
