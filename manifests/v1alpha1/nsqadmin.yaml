@@ -26,5 +26,3 @@ spec:
               maximum: 1024
             image:
               type: string
-            resources:
-

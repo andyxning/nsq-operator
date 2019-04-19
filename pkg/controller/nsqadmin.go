@@ -27,6 +27,7 @@ import (
 	"github.com/andyxning/nsq-operator/pkg/generated/informers/externalversions/nsqio/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -505,6 +506,33 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, cfs strin
 									corev1.ResourceCPU:    nac.opts.NsqAdminCPURequestResource,
 									corev1.ResourceMemory: nac.opts.NsqAdminMemoryRequestResource,
 								},
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/ping",
+										Port:   intstr.FromInt(nac.opts.NsqAdminPort),
+										Scheme: corev1.URISchemeHTTP,
+									},
+								},
+								InitialDelaySeconds: 3,
+								TimeoutSeconds:      2,
+								PeriodSeconds:       30,
+								SuccessThreshold:    1,
+								FailureThreshold:    3,
+							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/ping",
+										Port: intstr.FromInt(nac.opts.NsqAdminPort),
+									},
+								},
+								InitialDelaySeconds: 3,
+								TimeoutSeconds:      2,
+								PeriodSeconds:       30,
+								SuccessThreshold:    1,
+								FailureThreshold:    3,
 							},
 						},
 					},

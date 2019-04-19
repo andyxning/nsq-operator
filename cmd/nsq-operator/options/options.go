@@ -35,6 +35,9 @@ type Options struct {
 	LeaseName      string
 	LeaseNamespace string
 
+	NsqAdminPort   int
+	NsqLookupdPort int
+
 	nsqAdminCPULimit      string
 	nsqAdminCPURequest    string
 	nsqAdminMemoryLimit   string
@@ -79,6 +82,9 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.LeaseName, "lease-name", "nsq-operator", "The lease lock resource name")
 	pflag.StringVar(&o.LeaseNamespace, "lease-namespace", "default", "The lease lock resource namespace")
 	pflag.BoolVar(&o.Version, "version", false, "Print version")
+
+	pflag.IntVar(&o.NsqAdminPort, "nsqadmin-port", 4171, "The port for a nsqadmin instance")
+	pflag.IntVar(&o.NsqLookupdPort, "nsqlookupd-port", 4161, "The port for a nsqlookupd instance")
 
 	pflag.StringVar(&o.nsqAdminMemoryLimit, "nsqadmin-mem-limit", "200Mi", "Memory limit resource value for a nsqadmin instance")
 	pflag.StringVar(&o.nsqAdminCPULimit, "nsqadmin-cpu-limit", "300m", "CPU limit resource value for a nsqadmin instance")
