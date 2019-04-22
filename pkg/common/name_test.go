@@ -74,7 +74,7 @@ func TestNsqAdminConfigMapName(t *testing.T) {
 	}
 }
 
-func TestNsqLookupdStatefulSetName(t *testing.T) {
+func TestNsqLookupdDeploymentName(t *testing.T) {
 	cases := []struct {
 		Desc   string
 		Input  string
@@ -95,7 +95,7 @@ func TestNsqLookupdStatefulSetName(t *testing.T) {
 	for _, ut := range cases {
 		ret := NsqLookupdDeploymentName(ut.Input)
 		if ret != ut.Wanted {
-			t.Fatalf("Desc: %v. NsqLookupd StatefulSet name mismatches for %q. Return: %v. Wanted: %v",
+			t.Fatalf("Desc: %v. NsqLookupd Deployment name mismatches for %q. Return: %v. Wanted: %v",
 				ut.Desc, ut.Input, ret, ut.Wanted)
 		}
 	}

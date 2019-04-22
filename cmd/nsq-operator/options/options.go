@@ -75,13 +75,13 @@ func (o *Options) MustRegisterFlags() {
 
 	hostName, err := os.Hostname()
 	if err != nil {
-		panic("Can not extract hostname for holder identify")
+		panic("can not extract hostname for lease lock identify")
 	}
 
 	pflag.StringVar(&o.APIServerURL, "api-server-url", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster")
 	pflag.StringVar(&o.KubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster")
 	pflag.StringVar(&o.PrometheusAddress, "prometheus-address", "0.0.0.0:3080", "Prometheus metrics api address")
-	pflag.StringVar(&o.LeaseID, "lease-id", hostName, "The holder identify name for a nsq-operator instance in a HA environment")
+	pflag.StringVar(&o.LeaseID, "lease-id", hostName, "Lease lock identify name for a nsq-operator instance in a HA environment")
 	pflag.StringVar(&o.LeaseName, "lease-name", "nsq-operator", "Lease lock resource name")
 	pflag.StringVar(&o.LeaseNamespace, "lease-namespace", "default", "Lease lock resource namespace")
 	pflag.BoolVar(&o.Version, "version", false, "Print version")
@@ -94,13 +94,13 @@ func (o *Options) MustRegisterFlags() {
 
 	pflag.StringVar(&o.nsqAdminMemoryLimit, "nsqadmin-mem-limit", "200Mi", "Memory limit resource value for a nsqadmin instance")
 	pflag.StringVar(&o.nsqAdminCPULimit, "nsqadmin-cpu-limit", "300m", "CPU limit resource value for a nsqadmin instance")
-	pflag.StringVar(&o.nsqAdminMemoryRequest, "nsqadmin-mem-request", "200Mi", "Memory request resource value for a nsqadmin instance")
-	pflag.StringVar(&o.nsqAdminCPURequest, "nsqadmin-cpu-request", "300m", "CPU request resource value for a nsqadmin instance")
+	pflag.StringVar(&o.nsqAdminMemoryRequest, "nsqadmin-mem-request", "150Mi", "Memory request resource value for a nsqadmin instance")
+	pflag.StringVar(&o.nsqAdminCPURequest, "nsqadmin-cpu-request", "250m", "CPU request resource value for a nsqadmin instance")
 
 	pflag.StringVar(&o.nsqLookupdMemoryLimit, "nsqlookupd-mem-limit", "200Mi", "Memory limit resource value for a nsqlookupd instance")
 	pflag.StringVar(&o.nsqLookupdCPULimit, "nsqlookupd-cpu-limit", "300m", "CPU limit resource value for a nsqlookupd instance")
-	pflag.StringVar(&o.nsqLookupdMemoryRequest, "nsqlookupd-mem-request", "200Mi", "Memory request resource value for a nsqlookupd instance")
-	pflag.StringVar(&o.nsqLookupdCPURequest, "nsqlookupd-cpu-request", "300m", "CPU request resource value for a nsqlookupd instance")
+	pflag.StringVar(&o.nsqLookupdMemoryRequest, "nsqlookupd-mem-request", "150Mi", "Memory request resource value for a nsqlookupd instance")
+	pflag.StringVar(&o.nsqLookupdCPURequest, "nsqlookupd-cpu-request", "250m", "CPU request resource value for a nsqlookupd instance")
 }
 
 func (o *Options) MustParse() {

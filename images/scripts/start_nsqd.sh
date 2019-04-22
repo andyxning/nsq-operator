@@ -20,30 +20,30 @@ _term() {
     echo "receive SIGTERM signal"
 
     echo "killing nsqd"
-    nsqd_pid=`pgrep -P $main_pid "^nsqd"`
-    /bin/kill -s SIGTERM $nsqd_pid
+    nsqd_pid=`pgrep -P ${main_pid} "^nsqd"`
+    /bin/kill -s SIGTERM ${nsqd_pid}
     while true; do
-        if [ ! -e /proc/$nsqd_pid ]; then
+        if [[ ! -e /proc/${nsqd_pid} ]]; then
             break
         fi
         sleep 1
     done
-    echo "killed nsqd"
+    echo "nsqd killed"
 }
 
 _int() {
     echo "receive SIGINT signal"
 
     echo "killing nsqd"
-    nsqd_pid=`pgrep -P $main_pid "^nsqd"`
-    /bin/kill -s SIGINT $nsqd_pid
+    nsqd_pid=`pgrep -P ${main_pid} "^nsqd"`
+    /bin/kill -s SIGINT ${nsqd_pid}
     while true; do
-        if [ ! -e /proc/$nsqd_pid ]; then
+        if [[ ! -e /proc/${nsqd_pid} ]]; then
             break
         fi
         sleep 1
     done
-    echo "killed nsqd"
+    echo "nsqd killed"
 }
 
 trap _term SIGTERM
@@ -51,7 +51,7 @@ trap _int SIGINT
 
 LOG_DIR=${LOG_DIR:-"/var/log/nsqd"}
 
-mkdir -p $LOG_DIR
+mkdir -p ${LOG_DIR}
 
 source /etc/nsq/nsqd
 

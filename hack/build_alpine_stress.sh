@@ -19,6 +19,5 @@ STRESS_VERSION=1.0.4
 
 apk update && apk add --no-cache bash bash-doc bash-completion g++ make curl && \
  curl -o /tmp/stress-${STRESS_VERSION}.tar.gz https://people.seas.harvard.edu/~apw/stress/stress-${STRESS_VERSION}.tar.gz && \
- cd /tmp && tar zxvf stress-${STRESS_VERSION}.tar.gz && \
- cd /tmp/stress-${STRESS_VERSION} && \
+ cd /tmp && tar zxvf stress-${STRESS_VERSION}.tar.gz && cd /tmp/stress-${STRESS_VERSION} && \
  ./configure && make && make install

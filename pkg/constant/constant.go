@@ -17,6 +17,7 @@ limitations under the License.
 package constant
 
 const (
+	// Controller name
 	NsqdControllerName       = "nsqd-controller"
 	NsqLookupdControllerName = "nsqlookupd-controller"
 	NsqAdminControllerName   = "nsqadmin-controller"
