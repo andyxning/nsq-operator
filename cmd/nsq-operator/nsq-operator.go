@@ -126,7 +126,7 @@ func main() {
 					nsqInformerFactory.Nsq().V1alpha1().NsqAdmins())
 
 				nsqLookupdController := controller.NewNsqLookupdController(opts, kubeClient, nsqClient,
-					kubeInformerFactory.Apps().V1().StatefulSets(),
+					kubeInformerFactory.Apps().V1().Deployments(),
 					kubeInformerFactory.Core().V1().ConfigMaps(),
 					nsqInformerFactory.Nsq().V1alpha1().NsqLookupds())
 
@@ -141,7 +141,7 @@ func main() {
 				go func() {
 					defer wg.Done()
 
-					if err = nsqAdminController.Run(8, stopCh); err != nil {
+					if err = nsqAdminController.Run(opts.NsqAdminControllerWorker, stopCh); err != nil {
 						klog.Fatalf("Error running nsqadmin controller: %v", err)
 					}
 				}()
@@ -149,7 +149,7 @@ func main() {
 				go func() {
 					defer wg.Done()
 
-					if err = nsqLookupdController.Run(8, stopCh); err != nil {
+					if err = nsqLookupdController.Run(opts.NsqLookupdControllerWorker, stopCh); err != nil {
 						klog.Fatalf("Error running nsqlookupd controller: %v", err)
 					}
 				}()

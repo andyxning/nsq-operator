@@ -29,12 +29,12 @@ func TestNsqAdminDeploymentName(t *testing.T) {
 		{
 			Desc:   "normal",
 			Input:  "test",
-			Wanted: "test",
+			Wanted: "test-nsqadmin",
 		},
 		{
 			Desc:   "empty",
 			Input:  "",
-			Wanted: "",
+			Wanted: "-nsqadmin",
 		},
 	}
 
@@ -56,12 +56,12 @@ func TestNsqAdminConfigMapName(t *testing.T) {
 		{
 			Desc:   "normal",
 			Input:  "test",
-			Wanted: "test",
+			Wanted: "test-nsqadmin",
 		},
 		{
 			Desc:   "empty",
 			Input:  "",
-			Wanted: "",
+			Wanted: "-nsqadmin",
 		},
 	}
 
@@ -83,17 +83,17 @@ func TestNsqLookupdStatefulSetName(t *testing.T) {
 		{
 			Desc:   "normal",
 			Input:  "test",
-			Wanted: "test",
+			Wanted: "test-nsqlookupd",
 		},
 		{
 			Desc:   "empty",
 			Input:  "",
-			Wanted: "",
+			Wanted: "-nsqlookupd",
 		},
 	}
 
 	for _, ut := range cases {
-		ret := NsqLookupdStatefulSetName(ut.Input)
+		ret := NsqLookupdDeploymentName(ut.Input)
 		if ret != ut.Wanted {
 			t.Fatalf("Desc: %v. NsqLookupd StatefulSet name mismatches for %q. Return: %v. Wanted: %v",
 				ut.Desc, ut.Input, ret, ut.Wanted)
@@ -110,12 +110,12 @@ func TestNsqLookupdConfigMapName(t *testing.T) {
 		{
 			Desc:   "normal",
 			Input:  "test",
-			Wanted: "test",
+			Wanted: "test-nsqlookupd",
 		},
 		{
 			Desc:   "empty",
 			Input:  "",
-			Wanted: "",
+			Wanted: "-nsqlookupd",
 		},
 	}
 

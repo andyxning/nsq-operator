@@ -35,6 +35,9 @@ type Options struct {
 	LeaseName      string
 	LeaseNamespace string
 
+	NsqAdminControllerWorker   int
+	NsqLookupdControllerWorker int
+
 	NsqAdminPort   int
 	NsqLookupdPort int
 
@@ -79,12 +82,15 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.KubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster")
 	pflag.StringVar(&o.PrometheusAddress, "prometheus-address", "0.0.0.0:3080", "Prometheus metrics api address")
 	pflag.StringVar(&o.LeaseID, "lease-id", hostName, "The holder identify name for a nsq-operator instance in a HA environment")
-	pflag.StringVar(&o.LeaseName, "lease-name", "nsq-operator", "The lease lock resource name")
-	pflag.StringVar(&o.LeaseNamespace, "lease-namespace", "default", "The lease lock resource namespace")
+	pflag.StringVar(&o.LeaseName, "lease-name", "nsq-operator", "Lease lock resource name")
+	pflag.StringVar(&o.LeaseNamespace, "lease-namespace", "default", "Lease lock resource namespace")
 	pflag.BoolVar(&o.Version, "version", false, "Print version")
 
-	pflag.IntVar(&o.NsqAdminPort, "nsqadmin-port", 4171, "The port for a nsqadmin instance")
-	pflag.IntVar(&o.NsqLookupdPort, "nsqlookupd-port", 4161, "The port for a nsqlookupd instance")
+	pflag.IntVar(&o.NsqAdminPort, "nsqadmin-port", 4171, "Port for a nsqadmin instance")
+	pflag.IntVar(&o.NsqLookupdPort, "nsqlookupd-port", 4161, "Port for a nsqlookupd instance")
+
+	pflag.IntVar(&o.NsqAdminControllerWorker, "nsqadmin-controller-worker", 8, "Worker number for nsqadmin controller")
+	pflag.IntVar(&o.NsqLookupdControllerWorker, "nsqlookupd-controller-worker", 8, "Worker number for nsqlookupd controller")
 
 	pflag.StringVar(&o.nsqAdminMemoryLimit, "nsqadmin-mem-limit", "200Mi", "Memory limit resource value for a nsqadmin instance")
 	pflag.StringVar(&o.nsqAdminCPULimit, "nsqadmin-cpu-limit", "300m", "CPU limit resource value for a nsqadmin instance")

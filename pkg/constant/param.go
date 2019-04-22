@@ -14,26 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package constant
 
-import "fmt"
+type ParamName string
 
-func NsqAdminDeploymentName(cluster string) string {
-	return fmt.Sprintf("%s-nsqadmin", cluster)
-}
-
-func NsqAdminConfigMapName(cluster string) string {
-	return fmt.Sprintf("%s-nsqadmin", cluster)
-}
-
-func NsqLookupdDeploymentName(cluster string) string {
-	return fmt.Sprintf("%s-nsqlookupd", cluster)
-}
-
-func NsqLookupdConfigMapName(cluster string) string {
-	return fmt.Sprintf("%s-nsqlookupd", cluster)
-}
-
-func NsqdStatefulSetName(cluster string) string {
-	return cluster
-}
+const (
+	NsqAdminHttpAddress        ParamName = "NSQADMIN_HTTP_ADDRESS"
+	NsqAdminLookupdHttpAddress ParamName = "NSQADMIN_LOOKUPD_HTTP_ADDRESS"
+)

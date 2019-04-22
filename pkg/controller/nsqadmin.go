@@ -172,7 +172,6 @@ func NewNsqAdminController(opts *options.Options, kubeClientSet kubernetes.Inter
 	})
 
 	return controller
-
 }
 
 // Run will set up the event handlers for types we are interested in, as well
@@ -307,14 +306,6 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	}
 
 	deploymentName := common.NsqAdminDeploymentName(na.Name)
-	if deploymentName == "" {
-		// We choose to absorb the error here as the worker would requeue the
-		// resource otherwise. Instead, the next time the resource is updated
-		// the resource will be queued again.
-		utilruntime.HandleError(fmt.Errorf("%s: deployment name must be non empty", key))
-		return nil
-	}
-
 	deployment, err := nac.deploymentsLister.Deployments(na.Namespace).Get(deploymentName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
@@ -459,7 +450,7 @@ func (c *NsqAdminController) handleObject(obj interface{}) {
 // the NsqAdmin resource that 'owns' it.
 func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, cfs string) *appsv1.Deployment {
 	labels := map[string]string{
-		"cluster": na.Name,
+		"cluster": common.NsqAdminDeploymentName(na.Name),
 	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
