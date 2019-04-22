@@ -3,5 +3,5 @@ kind: NsqLookupd
 metadata:
   name: test
 spec:
-  replicas: 1
-  image: dockerops123/nsqlookupd:0.3.8
+  replicas: 2
+  image: dockerops123/nsqlookupd:1.1.0
