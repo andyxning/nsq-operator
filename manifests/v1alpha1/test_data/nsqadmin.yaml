@@ -4,4 +4,4 @@ metadata:
   name: test 
 spec:
   replicas: 2
-  image: dockerops123/nsqadmin:0.3.8
+  image: dockerops123/nsqadmin:1.1.0

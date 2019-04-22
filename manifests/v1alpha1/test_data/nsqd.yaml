@@ -4,4 +4,4 @@ metadata:
   name: test
 spec:
   replicas: 2
-  image: nsqd:0.3.8
+  image: nsqd:1.1.0
