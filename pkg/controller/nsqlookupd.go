@@ -27,11 +27,13 @@ import (
 	"github.com/andyxning/nsq-operator/pkg/generated/informers/externalversions/nsqio/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 
@@ -61,8 +63,8 @@ type NsqLookupdController struct {
 	// nsqClientSet is a clientset for nsq.io API group
 	nsqClientSet nsqclientset.Interface
 
-	statefulsetsLister listerappsv1.StatefulSetLister
-	statefulsetsSynced cache.InformerSynced
+	deploymentsLister listerappsv1.DeploymentLister
+	deploymentsSynced cache.InformerSynced
 
 	configmapsLister listercorev1.ConfigMapLister
 	configmapsSynced cache.InformerSynced
@@ -85,7 +87,7 @@ type NsqLookupdController struct {
 func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Interface,
 	// nsqClientSet is a clientset for nsq.io API group
 	nsqClientSet nsqclientset.Interface,
-	statefulsetInformer informersappsv1.StatefulSetInformer,
+	deploymentInformer informersappsv1.DeploymentInformer,
 	configmapInformer informerscorev1.ConfigMapInformer,
 	nsqInformer v1alpha1.NsqLookupdInformer) *NsqLookupdController {
 
@@ -100,17 +102,17 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: constant.NsqLookupdControllerName})
 
 	controller := &NsqLookupdController{
-		opts:               opts,
-		kubeClientSet:      kubeClientSet,
-		nsqClientSet:       nsqClientSet,
-		statefulsetsLister: statefulsetInformer.Lister(),
-		statefulsetsSynced: statefulsetInformer.Informer().HasSynced,
-		configmapsLister:   configmapInformer.Lister(),
-		configmapsSynced:   configmapInformer.Informer().HasSynced,
-		nsqLookupdsLister:  nsqInformer.Lister(),
-		nsqLookupdsSynced:  nsqInformer.Informer().HasSynced,
-		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), nsqio.NsqLookupdKind),
-		recorder:           recorder,
+		opts:              opts,
+		kubeClientSet:     kubeClientSet,
+		nsqClientSet:      nsqClientSet,
+		deploymentsLister: deploymentInformer.Lister(),
+		deploymentsSynced: deploymentInformer.Informer().HasSynced,
+		configmapsLister:  configmapInformer.Lister(),
+		configmapsSynced:  configmapInformer.Informer().HasSynced,
+		nsqLookupdsLister: nsqInformer.Lister(),
+		nsqLookupdsSynced: nsqInformer.Informer().HasSynced,
+		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), nsqio.NsqLookupdKind),
+		recorder:          recorder,
 	}
 
 	klog.Info("Setting up event handlers")
@@ -121,20 +123,20 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 			controller.enqueueNsqLookupd(new)
 		},
 	})
-	// Set up an event handler for when statefulset resources change. This
-	// handler will lookup the owner of the given statefulset, and if it is
+	// Set up an event handler for when deployment resources change. This
+	// handler will lookup the owner of the given deployment, and if it is
 	// owned by a NsqLookupd resource will enqueue that NsqLookupd resource for
 	// processing. This way, we don't need to implement custom logic for
-	// handling statefulset resources. More info on this pattern:
+	// handling deployment resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
-	statefulsetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
 		UpdateFunc: func(old, new interface{}) {
-			newSfs := new.(*appsv1.StatefulSet)
-			oldSfs := old.(*appsv1.StatefulSet)
-			if newSfs.ResourceVersion == oldSfs.ResourceVersion {
-				// Periodic resync will send update events for all known statefulsets.
-				// Two different versions of the same statefulset will always have different RVs.
+			newDepl := new.(*appsv1.Deployment)
+			oldDepl := old.(*appsv1.Deployment)
+			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+				// Periodic resync will send update events for all known deployments.
+				// Two different versions of the same deployment will always have different RVs.
 				return
 			}
 			controller.handleObject(new)
@@ -161,8 +163,8 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 			}
 
 			if newCM.ResourceVersion == oldCM.ResourceVersion || oldDataHash == newDataHash {
-				// Periodic re-sync will send update events for all known statefulsets.
-				// Two different versions of the same statefulset will always have different RVs.
+				// Periodic re-sync will send update events for all known deployments.
+				// Two different versions of the same deployment will always have different RVs.
 				return
 			}
 			controller.handleObject(new)
@@ -171,7 +173,6 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 	})
 
 	return controller
-
 }
 
 // Run will set up the event handlers for types we are interested in, as well
@@ -187,7 +188,7 @@ func (nlc *NsqLookupdController) Run(threads int, stopCh <-chan struct{}) error 
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, nlc.statefulsetsSynced, nlc.nsqLookupdsSynced, nlc.configmapsSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, nlc.deploymentsSynced, nlc.nsqLookupdsSynced, nlc.configmapsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
@@ -279,7 +280,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	}
 
 	// Get the NsqLookupd resource with this namespace/name
-	na, err := nlc.nsqLookupdsLister.NsqLookupds(namespace).Get(name)
+	nl, err := nlc.nsqLookupdsLister.NsqLookupds(namespace).Get(name)
 	if err != nil {
 		// The NsqLookupd resource may no longer exist, in which case we stop
 		// processing.
@@ -292,7 +293,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	}
 
 	// Get the configmap with the name derived from NsqLookupd cluster name
-	configmap, err := nlc.configmapsLister.ConfigMaps(na.Namespace).Get(common.NsqLookupdConfigMapName(na.Name))
+	configmap, err := nlc.configmapsLister.ConfigMaps(nl.Namespace).Get(common.NsqLookupdConfigMapName(nl.Name))
 	// If the resource doesn't exist, we'll return cause that without the configmap,
 	// NsqLookupd can not assemble the command line arguments to start.
 	if err != nil {
@@ -301,24 +302,16 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 
 	configmapHash, err := common.Hash(configmap.Data)
 	if err != nil {
-		klog.Errorf("Hash configmap data for NsqLookupd %v error: %v", na.Name, err)
+		klog.Errorf("Hash configmap data for NsqLookupd %v error: %v", nl.Name, err)
 		return err
 	}
 
-	statefulsetName := common.NsqLookupdStatefulSetName(na.Name)
-	if statefulsetName == "" {
-		// We choose to absorb the error here as the worker would requeue the
-		// resource otherwise. Instead, the next time the resource is updated
-		// the resource will be queued again.
-		utilruntime.HandleError(fmt.Errorf("%s: statefulset name must be non empty", key))
-		return nil
-	}
-
-	statefulset, err := nlc.statefulsetsLister.StatefulSets(na.Namespace).Get(statefulsetName)
+	deploymentName := common.NsqLookupdDeploymentName(nl.Name)
+	deployment, err := nlc.deploymentsLister.Deployments(nl.Namespace).Get(deploymentName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
-		klog.Infof("Statefulset for NsqLookupd %v does not exist. Create it", na.Name)
-		statefulset, err = nlc.kubeClientSet.AppsV1().StatefulSets(na.Namespace).Create(nlc.newStatefulset(na, string(configmapHash)))
+		klog.Infof("deployment for NsqLookupd %v does not exist. Create it", nl.Name)
+		deployment, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Create(nlc.newDeployment(nl, string(configmapHash)))
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -328,25 +321,25 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		return err
 	}
 
-	// If the statefulset is not controlled by this NsqLookupd resource, we should log
+	// If the deployment is not controlled by this NsqLookupd resource, we should log
 	// a warning to the event recorder and return
-	if !metav1.IsControlledBy(statefulset, na) {
-		statefulset.GetCreationTimestamp()
-		msg := fmt.Sprintf(constant.MessageResourceExists, statefulset.Name)
-		nlc.recorder.Event(na, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
+	if !metav1.IsControlledBy(deployment, nl) {
+		deployment.GetCreationTimestamp()
+		msg := fmt.Sprintf(constant.MessageResourceExists, deployment.Name)
+		nlc.recorder.Event(nl, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
 		return fmt.Errorf(msg)
 	}
 
 	klog.V(6).Infof("New configmap hash: %v", string(configmapHash))
-	klog.V(6).Infof("Old configmap hash: %v", statefulset.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
+	klog.V(6).Infof("Old configmap hash: %v", deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 	klog.V(6).Infof("New configmap data: %v", configmap.Data)
-	if statefulset.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != string(configmapHash) {
+	if deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != string(configmapHash) {
 		klog.Infof("New configmap detected. New config: %v", configmap.Data)
-		statefulsetCopy := statefulset.DeepCopy()
-		statefulsetCopy.Spec.Template.Annotations = map[string]string{
+		deploymentCopy := deployment.DeepCopy()
+		deploymentCopy.Spec.Template.Annotations = map[string]string{
 			constant.NsqConfigMapAnnotationKey: string(configmapHash),
 		}
-		statefulsetNew, err := nlc.kubeClientSet.AppsV1().StatefulSets(na.Namespace).Update(statefulsetCopy)
+		deploymentNew, err := nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
 
 		// If an error occurs during Update, we'll requeue the item so we can
 		// attempt processing again later. THis could have been caused by a
@@ -354,19 +347,19 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		//
 		// If no error occurs, just return to give kubernetes some time to make
 		// adjustment according to the new spec.
-		klog.V(6).Infof("Update statefulset %v under configmap change error: %v", statefulsetCopy.Name, err)
-		klog.V(6).Infof("New statefulset %v annotation under configmap change: %v", statefulsetCopy.Name, []byte(statefulsetNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey]))
+		klog.V(6).Infof("Update deployment %v under configmap change error: %v", deploymentCopy.Name, err)
+		klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deploymentCopy.Name, []byte(deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey]))
 		return err
 	}
 
 	// If this number of the replicas on the NsqLookupd resource is specified, and the
-	// number does not equal the current desired replicas on the statefulset, we
-	// should update the statefulset resource.
-	if na.Spec.Replicas != nil && *na.Spec.Replicas != *statefulset.Spec.Replicas {
-		statefulsetCopy := statefulset.DeepCopy()
-		statefulsetCopy.Spec.Replicas = na.Spec.Replicas
-		klog.Infof("NsqLookupd %s replicas: %d, statefulset replicas: %d", name, *na.Spec.Replicas, *statefulset.Spec.Replicas)
-		statefulset, err = nlc.kubeClientSet.AppsV1().StatefulSets(na.Namespace).Update(statefulsetCopy)
+	// number does not equal the current desired replicas on the deployment, we
+	// should update the deployment resource.
+	if nl.Spec.Replicas != nil && *nl.Spec.Replicas != *deployment.Spec.Replicas {
+		deploymentCopy := deployment.DeepCopy()
+		deploymentCopy.Spec.Replicas = nl.Spec.Replicas
+		klog.Infof("NsqLookupd %s replicas: %d, deployment replicas: %d", name, *nl.Spec.Replicas, *deployment.Spec.Replicas)
+		deployment, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
 	}
 
 	// If an error occurs during Update, we'll requeue the item so we can
@@ -378,20 +371,82 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 
 	// Finally, we update the status block of the NsqLookupd resource to reflect the
 	// current state of the world
-	err = nlc.updateNsqLookupdStatus(na, statefulset)
+	err = nlc.updateNsqLookupdStatus(nl, deployment)
 	if err != nil {
 		return err
+	}
+
+	nsqAdminConfigMapName := common.NsqAdminConfigMapName(nl.Name)
+	nsqAdminConfigMap, err := nlc.configmapsLister.ConfigMaps(nl.Namespace).Get(nsqAdminConfigMapName)
+	// If the resource doesn't exist, we'll create it
+	if errors.IsNotFound(err) && *nl.Spec.Replicas == nl.Status.Replicas {
+		klog.Infof("Configmap for NsqAdmin %v does not exist. Create it", nl.Name)
+		nsqAdminConfigMap, err := nlc.newNsqAdminConfigMap(nl)
+		if err != nil {
+			return err
+		}
+		nsqAdminConfigMap, err = nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Create(nsqAdminConfigMap)
+	}
+
+	// If an error occurs during Get/Create, we'll requeue the item so we can
+	// attempt processing again later. This could have been caused by a
+	// temporary network failure, or any other transient reason.
+	if err != nil {
+		return err
+	}
+
+	newNL, err := nlc.nsqClientSet.NsqV1alpha1().NsqLookupds(nl.Namespace).Get(nl.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	// Try to update the nsqadmin configmap only if nsqlookupd is stable, i.e., when the status matches the spec
+	if *newNL.Spec.Replicas == newNL.Status.Replicas {
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Retrieve the latest version of configmap before attempting update
+			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+			result, err := nlc.configmapsLister.ConfigMaps(nl.Namespace).Get(nsqAdminConfigMapName)
+			if err != nil {
+				return fmt.Errorf("failed to get latest version of nsqadmin configmap %v: %v", common.NsqAdminConfigMapName(nl.Name), err)
+			}
+
+			data, err := nlc.assembleNsqAdminConfigMapData(nl)
+			if err != nil {
+				return fmt.Errorf("failed to assemble nsqadmin configmap data: %v", err)
+			}
+
+			newCM := result.DeepCopy()
+			newCM.Data = data
+
+			_, err = nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Update(newCM)
+			return err
+		})
+
+		// If an error occurs during Get/Create, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
+
+		// If the configmap is not controlled by this NsqLookupd resource, we should log
+		// a warning to the event recorder and return
+		if !metav1.IsControlledBy(nsqAdminConfigMap, nl) {
+			nsqAdminConfigMap.GetCreationTimestamp()
+			msg := fmt.Sprintf(constant.MessageResourceExists, nsqAdminConfigMap.Name)
+			nlc.recorder.Event(nl, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
+			return fmt.Errorf(msg)
+		}
 	}
 
 	return nil
 }
 
-func (nlc *NsqLookupdController) updateNsqLookupdStatus(na *nsqv1alpha1.NsqLookupd, statefulset *appsv1.StatefulSet) error {
+func (nlc *NsqLookupdController) updateNsqLookupdStatus(na *nsqv1alpha1.NsqLookupd, deployment *appsv1.Deployment) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	nlcopy := na.DeepCopy()
-	nlcopy.Status.Replicas = statefulset.Status.Replicas
+	nlcopy.Status.Replicas = deployment.Status.Replicas
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the NsqLookupd resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
@@ -453,27 +508,77 @@ func (c *NsqLookupdController) handleObject(obj interface{}) {
 	}
 }
 
-// newstatefulset creates a new statefulset for a NsqLookupd resource. It also sets
-// the appropriate OwnerReferences on the resource so handleObject can discover
-// the NsqLookupd resource that 'owns' it.
-func (nlc *NsqLookupdController) newStatefulset(na *nsqv1alpha1.NsqLookupd, cfs string) *appsv1.StatefulSet {
-	labels := map[string]string{
-		"cluster": na.Name,
+// assembleNsqAdminConfigMapData returns nsqadmin configmap data
+func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.NsqLookupd) (map[string]string, error) {
+	labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
+	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	if err != nil {
+		return nil, err
 	}
-	return &appsv1.StatefulSet{
+
+	podList, err := nlc.kubeClientSet.CoreV1().Pods(nl.Namespace).List(metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to list nsqlookupd %v pods: %v", nl.Name, err)
+	}
+
+	var addresses []string
+	for _, pod := range podList.Items {
+		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, nlc.opts.NsqLookupdPort))
+	}
+
+	return map[string]string{
+		string(constant.NsqAdminHttpAddress):        fmt.Sprintf("0.0.0.0:%v", nlc.opts.NsqAdminPort),
+		string(constant.NsqAdminLookupdHttpAddress): common.AssembleNsqLookupdAddresses(addresses),
+	}, nil
+}
+
+// newNsqAdminConfigMap creates a configmap for a NsqAdmin resource.
+func (nlc *NsqLookupdController) newNsqAdminConfigMap(nl *nsqv1alpha1.NsqLookupd) (*corev1.ConfigMap, error) {
+	data, err := nlc.assembleNsqAdminConfigMapData(nl)
+	if err != nil {
+		return nil, err
+	}
+
+	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      common.NsqLookupdStatefulSetName(na.Name),
-			Namespace: na.Namespace,
+			Name:      common.NsqAdminConfigMapName(nl.Name),
+			Namespace: nl.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(na, schema.GroupVersionKind{
+				*metav1.NewControllerRef(nl, schema.GroupVersionKind{
 					Group:   nsqv1alpha1.SchemeGroupVersion.Group,
 					Version: nsqv1alpha1.SchemeGroupVersion.Version,
 					Kind:    nsqio.NsqLookupdKind,
 				}),
 			},
 		},
-		Spec: appsv1.StatefulSetSpec{
-			Replicas: na.Spec.Replicas,
+		Data: data,
+	}, nil
+}
+
+// newDeployment creates a new deployment for a NsqLookupd resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the NsqLookupd resource that 'owns' it.
+func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, cfs string) *appsv1.Deployment {
+	labels := map[string]string{
+		"cluster": common.NsqLookupdDeploymentName(nl.Name),
+	}
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.NsqLookupdDeploymentName(nl.Name),
+			Namespace: nl.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(nl, schema.GroupVersionKind{
+					Group:   nsqv1alpha1.SchemeGroupVersion.Group,
+					Version: nsqv1alpha1.SchemeGroupVersion.Version,
+					Kind:    nsqio.NsqLookupdKind,
+				}),
+			},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: nl.Spec.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -487,23 +592,60 @@ func (nlc *NsqLookupdController) newStatefulset(na *nsqv1alpha1.NsqLookupd, cfs 
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  na.Name,
-							Image: na.Spec.Image,
+							Name:  nl.Name,
+							Image: nl.Spec.Image,
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      common.NsqLookupdConfigMapName(na.Name),
+									Name:      common.NsqLookupdConfigMapName(nl.Name),
 									MountPath: constant.NsqConfigMapMountPath,
 								},
 							},
 							ImagePullPolicy: corev1.PullAlways,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    nlc.opts.NsqLookupdCPULimitResource,
+									corev1.ResourceMemory: nlc.opts.NsqLookupdMemoryLimitResource,
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    nlc.opts.NsqLookupdCPURequestResource,
+									corev1.ResourceMemory: nlc.opts.NsqLookupdMemoryRequestResource,
+								},
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/ping",
+										Port:   intstr.FromInt(nlc.opts.NsqLookupdPort),
+										Scheme: corev1.URISchemeHTTP,
+									},
+								},
+								InitialDelaySeconds: 3,
+								TimeoutSeconds:      2,
+								PeriodSeconds:       30,
+								SuccessThreshold:    1,
+								FailureThreshold:    3,
+							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/ping",
+										Port: intstr.FromInt(nlc.opts.NsqLookupdPort),
+									},
+								},
+								InitialDelaySeconds: 3,
+								TimeoutSeconds:      2,
+								PeriodSeconds:       30,
+								SuccessThreshold:    1,
+								FailureThreshold:    3,
+							},
 						},
 					},
 					Volumes: []corev1.Volume{{
-						Name: common.NsqLookupdConfigMapName(na.Name),
+						Name: common.NsqLookupdConfigMapName(nl.Name),
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: common.NsqLookupdConfigMapName(na.Name),
+									Name: common.NsqLookupdConfigMapName(nl.Name),
 								},
 							},
 						},

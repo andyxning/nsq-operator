@@ -13,27 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package common
 
-import "fmt"
+import "strings"
 
-func NsqAdminDeploymentName(cluster string) string {
-	return fmt.Sprintf("%s-nsqadmin", cluster)
-}
-
-func NsqAdminConfigMapName(cluster string) string {
-	return fmt.Sprintf("%s-nsqadmin", cluster)
-}
-
-func NsqLookupdDeploymentName(cluster string) string {
-	return fmt.Sprintf("%s-nsqlookupd", cluster)
-}
-
-func NsqLookupdConfigMapName(cluster string) string {
-	return fmt.Sprintf("%s-nsqlookupd", cluster)
-}
-
-func NsqdStatefulSetName(cluster string) string {
-	return cluster
+func AssembleNsqLookupdAddresses(nsqLookupdAddressed []string) string {
+	return strings.Join(nsqLookupdAddressed, ",")
 }

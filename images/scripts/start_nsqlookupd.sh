@@ -55,6 +55,8 @@ mkdir -p $LOG_DIR
 
 source /etc/nsq/nsqlookupd
 
+mkdir -p $NSQLOOKUPD_META_PATH
+
 nsqlookupd --http-address=$NSQLOOKUPD_HTTP_ADDRESS --tcp-address=$NSQLOOKUPD_TCP_ADDRESS -meta-path=$NSQLOOKUPD_META_PATH | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait
