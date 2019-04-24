@@ -16,6 +16,10 @@ limitations under the License.
 
 package error
 
-// ErrResourceExists is used as part of the Event 'reason' when a Foo fails
-// to sync due to a Deployment of the same name already existing.
-var ErrResourceExists = "ErrResourceExists"
+// ErrResourceNotOwnedByNsqAdmin is used as part of the Event 'reason' when nsqadmin resource fails
+// to sync due to a Deployment/ConfigMap of the same name already existing.
+var ErrResourceNotOwnedByNsqAdmin = "ErrResourceNotOwnedByNsqAdmin"
+
+// ErrResourceNotOwnedByNsqLookupd is used as part of the Event 'reason' when nsqlookupd resource fails
+// to sync due to a Deployment/ConfigMap of the same name already existing.
+var ErrResourceNotOwnedByNsqLookupd = "ErrResourceNotOwnedByNsqLookupd"

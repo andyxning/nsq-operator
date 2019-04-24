@@ -33,6 +33,7 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 
@@ -53,7 +54,7 @@ import (
 	informerscorev1 "k8s.io/client-go/informers/core/v1"
 )
 
-// NsqAdminController is the controller implementation for NsqAdmin resources.
+// NsqAdminController is the reconcile implementation for NsqAdmin resources.
 type NsqAdminController struct {
 	opts *options.Options
 
@@ -82,7 +83,7 @@ type NsqAdminController struct {
 	recorder record.EventRecorder
 }
 
-// NewNsqAdminController returns a new NsqAdmin controller.
+// NewNsqAdminController returns a NsqAdmin controller.
 func NewNsqAdminController(opts *options.Options, kubeClientSet kubernetes.Interface,
 	// nsqClientSet is a clientset for nsq.io API group
 	nsqClientSet nsqclientset.Interface,
@@ -288,6 +289,7 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 			return nil
 		}
 
+		klog.Errorf("Get nsqadmin %s/%s error: %v", na.Namespace, na.Name, err)
 		return err
 	}
 
@@ -296,12 +298,13 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	// If the resource doesn't exist, we'll return cause that without the configmap,
 	// nsqadmin can not assemble the command line arguments to start.
 	if err != nil {
+		klog.Errorf("Get configmap for nsqadmin %s/%s error: %v", na.Namespace, na.Name, err)
 		return err
 	}
 
 	configmapHash, err := common.Hash(configmap.Data)
 	if err != nil {
-		klog.Errorf("Hash configmap data for nsqadmin %v error: %v", na.Name, err)
+		klog.Errorf("Hash configmap data for nsqadmin %s/%s error: %v", na.Namespace, na.Name, err)
 		return err
 	}
 
@@ -309,7 +312,7 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	deployment, err := nac.deploymentsLister.Deployments(na.Namespace).Get(deploymentName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
-		klog.Infof("Deployment for nsqadmin %v does not exist. Create it", na.Name)
+		klog.Infof("Deployment for nsqadmin %s/%s does not exist. Create it", na.Namespace, na.Name)
 		deployment, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Create(nac.newDeployment(na, string(configmapHash)))
 	}
 
@@ -317,6 +320,7 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 	if err != nil {
+		klog.Errorf("Get/Create deployment for nsqadmin %s/%s error: %v", na.Namespace, na.Name, err)
 		return err
 	}
 
@@ -324,30 +328,42 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	// a warning to the event recorder and return
 	if !metav1.IsControlledBy(deployment, na) {
 		deployment.GetCreationTimestamp()
-		msg := fmt.Sprintf(constant.MessageResourceExists, deployment.Name)
-		nac.recorder.Event(na, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
+		msg := fmt.Sprintf(constant.DeploymentResourceNotOwnedByNsqAdmin, deployment.Name)
+		nac.recorder.Event(na, corev1.EventTypeWarning, nsqerror.ErrResourceNotOwnedByNsqAdmin, msg)
 		return fmt.Errorf(msg)
 	}
 
-	klog.V(6).Infof("New configmap hash: %v", string(configmapHash))
+	klog.V(6).Infof("New configmap hash: %v", configmapHash)
 	klog.V(6).Infof("Old configmap hash: %v", deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 	klog.V(6).Infof("New configmap data: %v", configmap.Data)
-	if deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != string(configmapHash) {
-		klog.Infof("New configmap detected. New config: %v", configmap.Data)
-		deploymentCopy := deployment.DeepCopy()
-		deploymentCopy.Spec.Template.Annotations = map[string]string{
-			constant.NsqConfigMapAnnotationKey: string(configmapHash),
-		}
-		deploymentNew, err := nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
+	if deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != configmapHash {
+		klog.Infof("New configmap detected. New config: %#v", configmap.Data)
+		var deploymentNew *appsv1.Deployment
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Retrieve the latest version of deployment before attempting update
+			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+			deploymentOld, err := nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Get(deploymentName, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get deployment %s/%s from apiserver error: %v", na.Namespace, deploymentName, err)
+			}
+			deploymentCopy := deploymentOld.DeepCopy()
+			deploymentCopy.Spec.Template.Annotations = map[string]string{
+				constant.NsqConfigMapAnnotationKey: configmapHash,
+			}
+
+			deploymentNew, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
+			return err
+		})
 
 		// If an error occurs during Update, we'll requeue the item so we can
-		// attempt processing again later. THis could have been caused by a
+		// attempt processing again later. This could have been caused by a
 		// temporary network failure, or any other transient reason.
 		//
 		// If no error occurs, just return to give kubernetes some time to make
 		// adjustment according to the new spec.
-		klog.V(6).Infof("Update deployment %v under configmap change error: %v", deploymentCopy.Name, err)
-		klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deploymentCopy.Name, []byte(deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey]))
+		if err == nil {
+			klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deployment.Name, deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
+		}
 		return err
 	}
 
@@ -355,14 +371,24 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	// number does not equal the current desired replicas on the Deployment, we
 	// should update the Deployment resource.
 	if na.Spec.Replicas != nil && *na.Spec.Replicas != *deployment.Spec.Replicas {
-		deploymentCopy := deployment.DeepCopy()
-		deploymentCopy.Spec.Replicas = na.Spec.Replicas
-		klog.Infof("NsqAdmin %s replicas: %d, deployment replicas: %d", name, *na.Spec.Replicas, *deployment.Spec.Replicas)
-		deployment, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Retrieve the latest version of deployment before attempting update
+			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+			deploymentOld, err := nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Get(deploymentName, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get deployment %s/%s from apiserver error: %v", na.Namespace, deploymentName, err)
+			}
+
+			deploymentCopy := deploymentOld.DeepCopy()
+			deploymentCopy.Spec.Replicas = na.Spec.Replicas
+			klog.Infof("NsqAdmin %s replicas: %d, deployment replicas: %d", name, *na.Spec.Replicas, *deployment.Spec.Replicas)
+			_, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
+			return err
+		})
 	}
 
 	// If an error occurs during Update, we'll requeue the item so we can
-	// attempt processing again later. THis could have been caused by a
+	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 	if err != nil {
 		return err
@@ -379,16 +405,26 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 }
 
 func (nac *NsqAdminController) updateNsqAdminStatus(na *nsqv1alpha1.NsqAdmin, deployment *appsv1.Deployment) error {
-	// NEVER modify objects from the store. It's a read-only, local cache.
-	// You can use DeepCopy() to make a deep copy of original object and modify this copy
-	// Or create a copy manually for better performance
-	naCopy := na.DeepCopy()
-	naCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
-	// If the CustomResourceSubresources feature gate is not enabled,
-	// we must use Update instead of UpdateStatus to update the Status block of the NsqAdmin resource.
-	// UpdateStatus will not allow changes to the Spec of the resource,
-	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := nac.nsqClientSet.NsqV1alpha1().NsqAdmins(na.Namespace).Update(naCopy)
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		// Retrieve the latest version of deployment before attempting update
+		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+		naOld, err := nac.nsqClientSet.NsqV1alpha1().NsqAdmins(na.Namespace).Get(na.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("get nsqadmin %s/%s from apiserver error: %v", na.Namespace, na.Name, err)
+		}
+		// NEVER modify objects from the store. It's a read-only, local cache.
+		// You can use DeepCopy() to make a deep copy of original object and modify this copy
+		// Or create a copy manually for better performance
+		naCopy := naOld.DeepCopy()
+		naCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+		// If the CustomResourceSubresources feature gate is not enabled,
+		// we must use Update instead of UpdateStatus to update the Status block of the NsqAdmin resource.
+		// UpdateStatus will not allow changes to the Spec of the resource,
+		// which is ideal for ensuring nothing other than resource status has been updated.
+		_, err = nac.nsqClientSet.NsqV1alpha1().NsqAdmins(na.Namespace).Update(naCopy)
+		return err
+	})
+
 	return err
 }
 
@@ -410,7 +446,7 @@ func (nac *NsqAdminController) enqueueNsqAdmin(obj interface{}) {
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that NsqAdmin resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
-func (c *NsqAdminController) handleObject(obj interface{}) {
+func (nac *NsqAdminController) handleObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
 	if object, ok = obj.(metav1.Object); !ok {
@@ -424,9 +460,9 @@ func (c *NsqAdminController) handleObject(obj interface{}) {
 			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
 			return
 		}
-		klog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
+		klog.V(4).Infof("Recovered deleted object '%s/%s' from tombstone", object.GetNamespace(), object.GetName())
 	}
-	klog.V(4).Infof("Processing object(%v): %s", object.GetSelfLink(), object.GetName())
+	klog.V(4).Infof("Processing object %s/%s", object.GetNamespace(), object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		// If this object is not owned by a NsqAdmin, we should not do anything more
 		// with it.
@@ -434,13 +470,13 @@ func (c *NsqAdminController) handleObject(obj interface{}) {
 			return
 		}
 
-		nd, err := c.nsqAdminsLister.NsqAdmins(object.GetNamespace()).Get(ownerRef.Name)
+		na, err := nac.nsqAdminsLister.NsqAdmins(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			klog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
+			klog.V(4).Infof("Ignoring orphaned object '%s' of nsqadmin '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
 		}
 
-		c.enqueueNsqAdmin(nd)
+		nac.enqueueNsqAdmin(na)
 		return
 	}
 }
@@ -448,7 +484,7 @@ func (c *NsqAdminController) handleObject(obj interface{}) {
 // newDeployment creates a new Deployment for a NsqAdmin resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the NsqAdmin resource that 'owns' it.
-func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, cfs string) *appsv1.Deployment {
+func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMapHash string) *appsv1.Deployment {
 	labels := map[string]string{
 		"cluster": common.NsqAdminDeploymentName(na.Name),
 	}
@@ -473,7 +509,7 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, cfs strin
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 					Annotations: map[string]string{
-						constant.NsqConfigMapAnnotationKey: cfs,
+						constant.NsqConfigMapAnnotationKey: configMapHash,
 					},
 				},
 				Spec: corev1.PodSpec{
