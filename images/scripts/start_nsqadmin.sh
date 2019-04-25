@@ -20,30 +20,30 @@ _term() {
     echo "receive SIGTERM signal"
 
     echo "killing nsqadmin"
-    nsqadmin_pid=`pgrep -P $main_pid "^nsqadmin"`
-    /bin/kill -s SIGTERM $nsqadmin_pid
+    nsqadmin_pid=`pgrep -P ${main_pid} "^nsqadmin"`
+    /bin/kill -s SIGTERM ${nsqadmin_pid}
     while true; do
-        if [ ! -e /proc/$nsqadmin_pid ]; then
+        if [[ ! -e /proc/${nsqadmin_pid} ]]; then
             break
         fi
         sleep 1
     done
-    echo "killed nsqadmin"
+    echo "nsqadmin killed"
 }
 
 _int() {
     echo "receive SIGINT signal"
 
     echo "killing nsqadmin"
-    nsqadmin_pid=`pgrep -P $main_pid "^nsqadmin"`
-    /bin/kill -s SIGINT $nsqadmin_pid
+    nsqadmin_pid=`pgrep -P ${main_pid} "^nsqadmin"`
+    /bin/kill -s SIGINT ${nsqadmin_pid}
     while true; do
-        if [ ! -e /proc/$nsqadmin_pid ]; then
+        if [[ ! -e /proc/${nsqadmin_pid} ]]; then
             break
         fi
         sleep 1
     done
-    echo "killed nsqadmin"
+    echo "nsqadmin killed"
 }
 
 trap _term SIGTERM
@@ -51,10 +51,10 @@ trap _int SIGINT
 
 LOG_DIR=${LOG_DIR:-"/var/log/nsqadmin"}
 
-mdkir -p $LOG_DIR
+mdkir -p ${LOG_DIR}
 
 source /etc/nsq/nsqadmin
 
-nsqadmin --http-address=$NSQADMIN_HTTP_ADDRESS --lookupd-http-address=$NSQADMIN_LOOKUPD_HTTP_ADDRESS | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqadmin --http-address=${NSQADMIN_HTTP_ADDRESS} --lookupd-http-address=${NSQADMIN_LOOKUPD_HTTP_ADDRESS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait

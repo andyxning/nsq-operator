@@ -20,30 +20,30 @@ _term() {
     echo "receive SIGTERM signal"
 
     echo "killing nsqlookupd"
-    nsqlookupd_pid=`pgrep -P $main_pid "^nsqlookupd"`
-    /bin/kill -s SIGTERM $nsqlookupd_pid
+    nsqlookupd_pid=`pgrep -P ${main_pid} "^nsqlookupd"`
+    /bin/kill -s SIGTERM ${nsqlookupd_pid}
     while true; do
-        if [ ! -e /proc/$nsqlookupd_pid ]; then
+        if [[ ! -e /proc/${nsqlookupd_pid} ]]; then
             break
         fi
         sleep 1
     done
-    echo "killed nsqlookupd"
+    echo "nsqlookupd killed"
 }
 
 _int() {
     echo "receive SIGINT signal"
 
     echo "killing nsqlookupd"
-    nsqlookupd_pid=`pgrep -P $main_pid "^nsqlookupd"`
-    /bin/kill -s SIGINT $nsqlookupd_pid
+    nsqlookupd_pid=`pgrep -P ${main_pid} "^nsqlookupd"`
+    /bin/kill -s SIGINT ${nsqlookupd_pid}
     while true; do
-        if [ ! -e /proc/$nsqlookupd_pid ]; then
+        if [[ ! -e /proc/${nsqlookupd_pid} ]]; then
             break
         fi
         sleep 1
     done
-    echo "killed nsqlookupd"
+    echo "nsqlookupd killed"
 }
 
 trap _term SIGTERM
@@ -51,12 +51,12 @@ trap _int SIGINT
 
 LOG_DIR=${LOG_DIR:-"/var/log/nsqlookupd"}
 
-mkdir -p $LOG_DIR
+mkdir -p ${LOG_DIR}
 
 source /etc/nsq/nsqlookupd
 
-mkdir -p $NSQLOOKUPD_META_PATH
+mkdir -p ${NSQLOOKUPD_META_PATH}
 
-nsqlookupd --http-address=$NSQLOOKUPD_HTTP_ADDRESS --tcp-address=$NSQLOOKUPD_TCP_ADDRESS -meta-path=$NSQLOOKUPD_META_PATH | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqlookupd --http-address=${NSQLOOKUPD_HTTP_ADDRESS} --tcp-address=${NSQLOOKUPD_TCP_ADDRESS} -meta-path=${NSQLOOKUPD_META_PATH} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait

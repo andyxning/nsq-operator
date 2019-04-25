@@ -17,6 +17,7 @@ limitations under the License.
 package constant
 
 const (
+	// Controller name
 	NsqdControllerName       = "nsqd-controller"
 	NsqLookupdControllerName = "nsqlookupd-controller"
 	NsqAdminControllerName   = "nsqadmin-controller"
@@ -25,13 +26,13 @@ const (
 
 	NsqConfigMapAnnotationKey = "configmap/signature"
 
-	// SuccessSynced is used as part of the Event 'reason' when a Foo is synced
-	SuccessSynced = "Synced"
-
-	// MessageResourceExists is the message used for Events when a resource
+	// DeploymentResourceNotOwnedByNsqAdmin is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by Foo"
-	// MessageResourceSynced is the message used for an Event fired when a Foo
-	// is synced successfully
-	MessageResourceSynced = "Foo synced successfully"
+	DeploymentResourceNotOwnedByNsqAdmin = "Deployment %q already exists and is not managed by NsqAdmin"
+	// DeploymentResourceNotOwnedByNsqLookupd is the message used for Events when a resource
+	// fails to sync due to a Deployment already existing
+	DeploymentResourceNotOwnedByNsqLookupd = "Deployment %q already exists and is not managed by NsqLookupd"
+	// ConfigMapResourceNotOwnedByNsqLookupd is the message used for Events when a resource
+	// fails to sync due to a ConfigMap already existing
+	ConfigMapResourceNotOwnedByNsqLookupd = "ConfigMap %q already exists and is not managed by NsqLookupd"
 )

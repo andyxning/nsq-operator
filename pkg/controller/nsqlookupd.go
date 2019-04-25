@@ -54,7 +54,7 @@ import (
 	informerscorev1 "k8s.io/client-go/informers/core/v1"
 )
 
-// NsqLookupdController is the controller implementation for NsqLookupd resources.
+// NsqLookupdController is the reconcile implementation for NsqLookupd resources.
 type NsqLookupdController struct {
 	opts *options.Options
 
@@ -83,7 +83,7 @@ type NsqLookupdController struct {
 	recorder record.EventRecorder
 }
 
-// NewNsqLookupdController returns a new NsqLookupd controller.
+// NewNsqLookupdController returns a NsqLookupd controller.
 func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Interface,
 	// nsqClientSet is a clientset for nsq.io API group
 	nsqClientSet nsqclientset.Interface,
@@ -289,6 +289,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 			return nil
 		}
 
+		klog.Errorf("Get nsqlookupd %s/%s error: %v", nl.Namespace, nl.Name, err)
 		return err
 	}
 
@@ -297,12 +298,13 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	// If the resource doesn't exist, we'll return cause that without the configmap,
 	// NsqLookupd can not assemble the command line arguments to start.
 	if err != nil {
+		klog.Errorf("Get configmap for nsqlookupd %s/%s error: %v", nl.Namespace, nl.Name, err)
 		return err
 	}
 
 	configmapHash, err := common.Hash(configmap.Data)
 	if err != nil {
-		klog.Errorf("Hash configmap data for NsqLookupd %v error: %v", nl.Name, err)
+		klog.Errorf("Hash configmap data for nsqlookupd %s/%s error: %v", nl.Namespace, nl.Name, err)
 		return err
 	}
 
@@ -310,7 +312,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	deployment, err := nlc.deploymentsLister.Deployments(nl.Namespace).Get(deploymentName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
-		klog.Infof("deployment for NsqLookupd %v does not exist. Create it", nl.Name)
+		klog.Infof("deployment for nsqlookupd %s/%s does not exist. Create it", nl.Namespace, nl.Name)
 		deployment, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Create(nlc.newDeployment(nl, string(configmapHash)))
 	}
 
@@ -318,6 +320,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 	if err != nil {
+		klog.Errorf("Get/Create deployment for nsqlookupd %s/%s error: %v", nl.Namespace, nl.Name, err)
 		return err
 	}
 
@@ -325,30 +328,41 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	// a warning to the event recorder and return
 	if !metav1.IsControlledBy(deployment, nl) {
 		deployment.GetCreationTimestamp()
-		msg := fmt.Sprintf(constant.MessageResourceExists, deployment.Name)
-		nlc.recorder.Event(nl, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
+		msg := fmt.Sprintf(constant.DeploymentResourceNotOwnedByNsqLookupd, deployment.Name)
+		nlc.recorder.Event(nl, corev1.EventTypeWarning, nsqerror.ErrResourceNotOwnedByNsqLookupd, msg)
 		return fmt.Errorf(msg)
 	}
 
-	klog.V(6).Infof("New configmap hash: %v", string(configmapHash))
+	klog.V(6).Infof("New configmap hash: %v", configmapHash)
 	klog.V(6).Infof("Old configmap hash: %v", deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 	klog.V(6).Infof("New configmap data: %v", configmap.Data)
-	if deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != string(configmapHash) {
+	if deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != configmapHash {
 		klog.Infof("New configmap detected. New config: %v", configmap.Data)
-		deploymentCopy := deployment.DeepCopy()
-		deploymentCopy.Spec.Template.Annotations = map[string]string{
-			constant.NsqConfigMapAnnotationKey: string(configmapHash),
-		}
-		deploymentNew, err := nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
+		var deploymentNew *appsv1.Deployment
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Retrieve the latest version of deployment before attempting update
+			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+			deploymentOld, err := nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Get(deploymentName, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get deployment %s/%s from apiserver error: %v", nl.Namespace, deploymentName, err)
+			}
+			deploymentCopy := deploymentOld.DeepCopy()
+			deploymentCopy.Spec.Template.Annotations = map[string]string{
+				constant.NsqConfigMapAnnotationKey: configmapHash,
+			}
+			deploymentNew, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
+			return err
+		})
 
 		// If an error occurs during Update, we'll requeue the item so we can
-		// attempt processing again later. THis could have been caused by a
+		// attempt processing again later. This could have been caused by a
 		// temporary network failure, or any other transient reason.
 		//
 		// If no error occurs, just return to give kubernetes some time to make
 		// adjustment according to the new spec.
-		klog.V(6).Infof("Update deployment %v under configmap change error: %v", deploymentCopy.Name, err)
-		klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deploymentCopy.Name, []byte(deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey]))
+		if err != nil {
+			klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deployment.Name, deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
+		}
 		return err
 	}
 
@@ -356,14 +370,23 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	// number does not equal the current desired replicas on the deployment, we
 	// should update the deployment resource.
 	if nl.Spec.Replicas != nil && *nl.Spec.Replicas != *deployment.Spec.Replicas {
-		deploymentCopy := deployment.DeepCopy()
-		deploymentCopy.Spec.Replicas = nl.Spec.Replicas
-		klog.Infof("NsqLookupd %s replicas: %d, deployment replicas: %d", name, *nl.Spec.Replicas, *deployment.Spec.Replicas)
-		deployment, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Retrieve the latest version of deployment before attempting update
+			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+			deploymentOld, err := nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Get(deploymentName, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get deployment %s/%s from apiserver error: %v", nl.Namespace, deploymentName, err)
+			}
+			deploymentCopy := deploymentOld.DeepCopy()
+			deploymentCopy.Spec.Replicas = nl.Spec.Replicas
+			klog.Infof("NsqLookupd %s replicas: %d, deployment replicas: %d", name, *nl.Spec.Replicas, *deployment.Spec.Replicas)
+			_, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
+			return err
+		})
 	}
 
 	// If an error occurs during Update, we'll requeue the item so we can
-	// attempt processing again later. THis could have been caused by a
+	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 	if err != nil {
 		return err
@@ -379,10 +402,11 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	nsqAdminConfigMapName := common.NsqAdminConfigMapName(nl.Name)
 	nsqAdminConfigMap, err := nlc.configmapsLister.ConfigMaps(nl.Namespace).Get(nsqAdminConfigMapName)
 	// If the resource doesn't exist, we'll create it
-	if errors.IsNotFound(err) && *nl.Spec.Replicas == nl.Status.Replicas {
-		klog.Infof("Configmap for NsqAdmin %v does not exist. Create it", nl.Name)
+	if errors.IsNotFound(err) && *nl.Spec.Replicas == deployment.Status.AvailableReplicas {
+		klog.Infof("Configmap for nsqadmin %s/%s does not exist. Create it", nl.Namespace, nl.Name)
 		nsqAdminConfigMap, err := nlc.newNsqAdminConfigMap(nl)
 		if err != nil {
+			klog.Infof("Gen nsqadmin configmap %s/%s error: %v", nl.Namespace, nl.Name, err)
 			return err
 		}
 		nsqAdminConfigMap, err = nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Create(nsqAdminConfigMap)
@@ -400,18 +424,18 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		return err
 	}
 	// Try to update the nsqadmin configmap only if nsqlookupd is stable, i.e., when the status matches the spec
-	if *newNL.Spec.Replicas == newNL.Status.Replicas {
+	if *newNL.Spec.Replicas == newNL.Status.AvailableReplicas {
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of configmap before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
-			result, err := nlc.configmapsLister.ConfigMaps(nl.Namespace).Get(nsqAdminConfigMapName)
+			result, err := nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Get(nsqAdminConfigMapName, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to get latest version of nsqadmin configmap %v: %v", common.NsqAdminConfigMapName(nl.Name), err)
 			}
 
 			data, err := nlc.assembleNsqAdminConfigMapData(nl)
 			if err != nil {
-				return fmt.Errorf("failed to assemble nsqadmin configmap data: %v", err)
+				return fmt.Errorf("failed to assemble nsqadmin configmap %s/%s data: %v", nl.Namespace, common.NsqAdminConfigMapName(nl.Name), err)
 			}
 
 			newCM := result.DeepCopy()
@@ -427,31 +451,40 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		if err != nil {
 			return err
 		}
+	}
 
-		// If the configmap is not controlled by this NsqLookupd resource, we should log
-		// a warning to the event recorder and return
-		if !metav1.IsControlledBy(nsqAdminConfigMap, nl) {
-			nsqAdminConfigMap.GetCreationTimestamp()
-			msg := fmt.Sprintf(constant.MessageResourceExists, nsqAdminConfigMap.Name)
-			nlc.recorder.Event(nl, corev1.EventTypeWarning, nsqerror.ErrResourceExists, msg)
-			return fmt.Errorf(msg)
-		}
+	// If the configmap is not controlled by this NsqLookupd resource, we should log
+	// a warning to the event recorder and return
+	if !metav1.IsControlledBy(nsqAdminConfigMap, nl) {
+		nsqAdminConfigMap.GetCreationTimestamp()
+		msg := fmt.Sprintf(constant.ConfigMapResourceNotOwnedByNsqLookupd, nsqAdminConfigMap.Name)
+		nlc.recorder.Event(nl, corev1.EventTypeWarning, nsqerror.ErrResourceNotOwnedByNsqLookupd, msg)
+		return fmt.Errorf(msg)
 	}
 
 	return nil
 }
 
-func (nlc *NsqLookupdController) updateNsqLookupdStatus(na *nsqv1alpha1.NsqLookupd, deployment *appsv1.Deployment) error {
-	// NEVER modify objects from the store. It's a read-only, local cache.
-	// You can use DeepCopy() to make a deep copy of original object and modify this copy
-	// Or create a copy manually for better performance
-	nlcopy := na.DeepCopy()
-	nlcopy.Status.Replicas = deployment.Status.Replicas
-	// If the CustomResourceSubresources feature gate is not enabled,
-	// we must use Update instead of UpdateStatus to update the Status block of the NsqLookupd resource.
-	// UpdateStatus will not allow changes to the Spec of the resource,
-	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := nlc.nsqClientSet.NsqV1alpha1().NsqLookupds(na.Namespace).Update(nlcopy)
+func (nlc *NsqLookupdController) updateNsqLookupdStatus(nl *nsqv1alpha1.NsqLookupd, deployment *appsv1.Deployment) error {
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		// Retrieve the latest version of deployment before attempting update
+		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+		nlOld, err := nlc.nsqClientSet.NsqV1alpha1().NsqLookupds(nl.Namespace).Get(nl.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("get nsqlookupd %s/%s from apiserver error: %v", nl.Namespace, nl.Name, err)
+		}
+		// NEVER modify objects from the store. It's a read-only, local cache.
+		// You can use DeepCopy() to make a deep copy of original object and modify this copy
+		// Or create a copy manually for better performance
+		nlCopy := nlOld.DeepCopy()
+		nlCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+		// If the CustomResourceSubresources feature gate is not enabled,
+		// we must use Update instead of UpdateStatus to update the Status block of the NsqLookupd resource.
+		// UpdateStatus will not allow changes to the Spec of the resource,
+		// which is ideal for ensuring nothing other than resource status has been updated.
+		_, err = nlc.nsqClientSet.NsqV1alpha1().NsqLookupds(nl.Namespace).Update(nlCopy)
+		return err
+	})
 	return err
 }
 
@@ -473,7 +506,7 @@ func (nlc *NsqLookupdController) enqueueNsqLookupd(obj interface{}) {
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that NsqLookupd resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
-func (c *NsqLookupdController) handleObject(obj interface{}) {
+func (nlc *NsqLookupdController) handleObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
 	if object, ok = obj.(metav1.Object); !ok {
@@ -487,9 +520,9 @@ func (c *NsqLookupdController) handleObject(obj interface{}) {
 			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
 			return
 		}
-		klog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
+		klog.V(4).Infof("Recovered deleted object '%s/%s' from tombstone", object.GetNamespace(), object.GetName())
 	}
-	klog.V(4).Infof("Processing object(%v): %s", object.GetSelfLink(), object.GetName())
+	klog.V(4).Infof("Processing object %s/%s", object.GetNamespace(), object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		// If this object is not owned by a NsqLookupd, we should not do anything more
 		// with it.
@@ -497,13 +530,13 @@ func (c *NsqLookupdController) handleObject(obj interface{}) {
 			return
 		}
 
-		nd, err := c.nsqLookupdsLister.NsqLookupds(object.GetNamespace()).Get(ownerRef.Name)
+		nl, err := nlc.nsqLookupdsLister.NsqLookupds(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			klog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
+			klog.V(4).Infof("Ignoring orphaned object '%s' of nsqlookupd '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
 		}
 
-		c.enqueueNsqLookupd(nd)
+		nlc.enqueueNsqLookupd(nl)
 		return
 	}
 }
@@ -561,7 +594,7 @@ func (nlc *NsqLookupdController) newNsqAdminConfigMap(nl *nsqv1alpha1.NsqLookupd
 // newDeployment creates a new deployment for a NsqLookupd resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the NsqLookupd resource that 'owns' it.
-func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, cfs string) *appsv1.Deployment {
+func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, configMapHash string) *appsv1.Deployment {
 	labels := map[string]string{
 		"cluster": common.NsqLookupdDeploymentName(nl.Name),
 	}
@@ -586,7 +619,7 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, cfs s
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 					Annotations: map[string]string{
-						constant.NsqConfigMapAnnotationKey: cfs,
+						constant.NsqConfigMapAnnotationKey: configMapHash,
 					},
 				},
 				Spec: corev1.PodSpec{
