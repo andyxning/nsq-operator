@@ -26,12 +26,5 @@ spec:
               maximum: 2048
             image:
               type: string
-            command:
+            storageClassName:
               type: string
-            args:
-              type: array
-              items:
-                type: string
-
-
-

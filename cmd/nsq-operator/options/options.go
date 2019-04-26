@@ -37,9 +37,11 @@ type Options struct {
 
 	NsqAdminControllerWorker   int
 	NsqLookupdControllerWorker int
+	NsqdControllerWorker       int
 
 	NsqAdminPort   int
 	NsqLookupdPort int
+	NsqdPort       int
 
 	nsqAdminCPULimit      string
 	nsqAdminCPURequest    string
@@ -51,6 +53,11 @@ type Options struct {
 	nsqLookupdMemoryLimit   string
 	nsqLookupdMemoryRequest string
 
+	nsqdCPULimit      string
+	nsqdCPURequest    string
+	nsqdMemoryLimit   string
+	nsqdMemoryRequest string
+
 	NsqAdminCPULimitResource      resource.Quantity
 	NsqAdminCPURequestResource    resource.Quantity
 	NsqAdminMemoryLimitResource   resource.Quantity
@@ -60,6 +67,11 @@ type Options struct {
 	NsqLookupdCPURequestResource    resource.Quantity
 	NsqLookupdMemoryLimitResource   resource.Quantity
 	NsqLookupdMemoryRequestResource resource.Quantity
+
+	NsqdCPULimitResource      resource.Quantity
+	NsqdCPURequestResource    resource.Quantity
+	NsqdMemoryLimitResource   resource.Quantity
+	NsqdMemoryRequestResource resource.Quantity
 
 	Version bool
 }
@@ -88,9 +100,11 @@ func (o *Options) MustRegisterFlags() {
 
 	pflag.IntVar(&o.NsqAdminPort, "nsqadmin-port", 4171, "Port for a nsqadmin instance")
 	pflag.IntVar(&o.NsqLookupdPort, "nsqlookupd-port", 4161, "Port for a nsqlookupd instance")
+	pflag.IntVar(&o.NsqdPort, "nsqd-port", 4151, "Port for a nsqd instance")
 
 	pflag.IntVar(&o.NsqAdminControllerWorker, "nsqadmin-controller-worker", 8, "Worker number for nsqadmin controller")
 	pflag.IntVar(&o.NsqLookupdControllerWorker, "nsqlookupd-controller-worker", 8, "Worker number for nsqlookupd controller")
+	pflag.IntVar(&o.NsqdControllerWorker, "nsqd-controller-worker", 8, "Worker number for nsqd controller")
 
 	pflag.StringVar(&o.nsqAdminMemoryLimit, "nsqadmin-mem-limit", "200Mi", "Memory limit resource value for a nsqadmin instance")
 	pflag.StringVar(&o.nsqAdminCPULimit, "nsqadmin-cpu-limit", "300m", "CPU limit resource value for a nsqadmin instance")
@@ -101,6 +115,11 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.nsqLookupdCPULimit, "nsqlookupd-cpu-limit", "300m", "CPU limit resource value for a nsqlookupd instance")
 	pflag.StringVar(&o.nsqLookupdMemoryRequest, "nsqlookupd-mem-request", "150Mi", "Memory request resource value for a nsqlookupd instance")
 	pflag.StringVar(&o.nsqLookupdCPURequest, "nsqlookupd-cpu-request", "250m", "CPU request resource value for a nsqlookupd instance")
+
+	pflag.StringVar(&o.nsqdMemoryLimit, "nsqd-mem-limit", "200Mi", "Memory limit resource value for a nsqd instance")
+	pflag.StringVar(&o.nsqdCPULimit, "nsqd-cpu-limit", "300m", "CPU limit resource value for a nsqd instance")
+	pflag.StringVar(&o.nsqdMemoryRequest, "nsqd-mem-request", "150Mi", "Memory request resource value for a nsqd instance")
+	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "250m", "CPU request resource value for a nsqd instance")
 }
 
 func (o *Options) MustParse() {
@@ -115,4 +134,9 @@ func (o *Options) MustParse() {
 	o.NsqLookupdMemoryLimitResource = resource.MustParse(o.nsqLookupdMemoryLimit)
 	o.NsqLookupdCPURequestResource = resource.MustParse(o.nsqLookupdCPURequest)
 	o.NsqLookupdMemoryRequestResource = resource.MustParse(o.nsqLookupdMemoryLimit)
+
+	o.NsqdCPULimitResource = resource.MustParse(o.nsqdCPULimit)
+	o.NsqdMemoryLimitResource = resource.MustParse(o.nsqdMemoryLimit)
+	o.NsqdCPURequestResource = resource.MustParse(o.nsqdCPURequest)
+	o.NsqdMemoryRequestResource = resource.MustParse(o.nsqdMemoryLimit)
 }

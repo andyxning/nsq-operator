@@ -117,8 +117,8 @@ func main() {
 					klog.Fatalf("Error building nsq clientset: %v", err)
 				}
 
-				kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*10)
-				nsqInformerFactory := nsqinformers.NewSharedInformerFactory(nsqClient, time.Second*10)
+				kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+				nsqInformerFactory := nsqinformers.NewSharedInformerFactory(nsqClient, time.Second*30)
 
 				nsqAdminController := controller.NewNsqAdminController(opts, kubeClient, nsqClient,
 					kubeInformerFactory.Apps().V1().Deployments(),
@@ -130,13 +130,18 @@ func main() {
 					kubeInformerFactory.Core().V1().ConfigMaps(),
 					nsqInformerFactory.Nsq().V1alpha1().NsqLookupds())
 
+				nsqdController := controller.NewNsqdController(opts, kubeClient, nsqClient,
+					kubeInformerFactory.Apps().V1().StatefulSets(),
+					kubeInformerFactory.Core().V1().ConfigMaps(),
+					nsqInformerFactory.Nsq().V1alpha1().Nsqds())
+
 				// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 				// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
 				kubeInformerFactory.Start(stopCh)
 				nsqInformerFactory.Start(stopCh)
 
 				wg := sync.WaitGroup{}
-				wg.Add(2)
+				wg.Add(3)
 
 				go func() {
 					defer wg.Done()
@@ -151,6 +156,14 @@ func main() {
 
 					if err = nsqLookupdController.Run(opts.NsqLookupdControllerWorker, stopCh); err != nil {
 						klog.Fatalf("Error running nsqlookupd controller: %v", err)
+					}
+				}()
+
+				go func() {
+					defer wg.Done()
+
+					if err = nsqdController.Run(opts.NsqdControllerWorker, stopCh); err != nil {
+						klog.Fatalf("Error running nsqd controller: %v", err)
 					}
 				}()
 

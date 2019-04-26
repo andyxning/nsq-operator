@@ -137,12 +137,12 @@ func TestNsqdStatefulSetName(t *testing.T) {
 		{
 			Desc:   "normal",
 			Input:  "test",
-			Wanted: "test",
+			Wanted: "test-nsqd",
 		},
 		{
 			Desc:   "empty",
 			Input:  "",
-			Wanted: "",
+			Wanted: "-nsqd",
 		},
 	}
 
@@ -150,6 +150,60 @@ func TestNsqdStatefulSetName(t *testing.T) {
 		ret := NsqdStatefulSetName(ut.Input)
 		if ret != ut.Wanted {
 			t.Fatalf("Desc: %v. Nsqd StatefulSet name mismatches for %q. Return: %v. Wanted: %v",
+				ut.Desc, ut.Input, ret, ut.Wanted)
+		}
+	}
+}
+
+func TestNsqdConfigMapName(t *testing.T) {
+	cases := []struct {
+		Desc   string
+		Input  string
+		Wanted string
+	}{
+		{
+			Desc:   "normal",
+			Input:  "test",
+			Wanted: "test-nsqd",
+		},
+		{
+			Desc:   "empty",
+			Input:  "",
+			Wanted: "-nsqd",
+		},
+	}
+
+	for _, ut := range cases {
+		ret := NsqdConfigMapName(ut.Input)
+		if ret != ut.Wanted {
+			t.Fatalf("Desc: %v. Nsqd ConfigMap name mismatches for %q. Return: %v. Wanted: %v",
+				ut.Desc, ut.Input, ret, ut.Wanted)
+		}
+	}
+}
+
+func TestNsqdVolumeClaimTemplatesName(t *testing.T) {
+	cases := []struct {
+		Desc   string
+		Input  string
+		Wanted string
+	}{
+		{
+			Desc:   "normal",
+			Input:  "test",
+			Wanted: "test-pvc",
+		},
+		{
+			Desc:   "empty",
+			Input:  "",
+			Wanted: "-pvc",
+		},
+	}
+
+	for _, ut := range cases {
+		ret := NsqdVolumeClaimTemplatesName(ut.Input)
+		if ret != ut.Wanted {
+			t.Fatalf("Desc: %v. Nsqd VolumeClaimTemplates name mismatches for %q. Return: %v. Wanted: %v",
 				ut.Desc, ut.Input, ret, ut.Wanted)
 		}
 	}

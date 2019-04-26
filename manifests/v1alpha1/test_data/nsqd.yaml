@@ -4,4 +4,5 @@ metadata:
   name: test
 spec:
   replicas: 2
-  image: nsqd:1.1.0
+  image: dockerops123/nsqd:1.1.0
+  storageClassName: standard

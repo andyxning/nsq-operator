@@ -18,11 +18,13 @@ package constant
 
 const (
 	// Controller name
+	NsqControllerName        = "nsq-controller"
 	NsqdControllerName       = "nsqd-controller"
 	NsqLookupdControllerName = "nsqlookupd-controller"
 	NsqAdminControllerName   = "nsqadmin-controller"
 
 	NsqConfigMapMountPath = "/etc/nsq"
+	NsqdDataMountPath     = "/data"
 
 	NsqConfigMapAnnotationKey = "configmap/signature"
 
@@ -35,4 +37,7 @@ const (
 	// ConfigMapResourceNotOwnedByNsqLookupd is the message used for Events when a resource
 	// fails to sync due to a ConfigMap already existing
 	ConfigMapResourceNotOwnedByNsqLookupd = "ConfigMap %q already exists and is not managed by NsqLookupd"
+	// StatefulSetResourceNotOwnedByNsqd is the message used for Events when a resource
+	// fails to sync due to a StatefulSet already existing
+	StatefulSetResourceNotOwnedByNsqd = "StatefulSet %q already exists and is not managed by Nsqd"
 )
