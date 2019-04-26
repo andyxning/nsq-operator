@@ -55,6 +55,6 @@ mdkir -p ${LOG_DIR}
 
 source /etc/nsq/nsqadmin
 
-nsqadmin --http-address=${NSQADMIN_HTTP_ADDRESS} --lookupd-http-address=${NSQADMIN_LOOKUPD_HTTP_ADDRESS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqadmin ${NSQADMIN_COMMAND_ARGUMENTS} --lookupd-http-address=${NSQADMIN_LOOKUPD_HTTP_ADDRESS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait

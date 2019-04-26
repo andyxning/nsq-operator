@@ -55,6 +55,6 @@ mkdir -p ${LOG_DIR}
 
 source /etc/nsq/nsqd
 
-nsqd | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqd ${NSQD_COMMAND_ARGUMENTS} --lookupd-tcp-address=${NSQD_LOOKUPD_TCP_ADDRESS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait
