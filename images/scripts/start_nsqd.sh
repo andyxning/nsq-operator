@@ -53,7 +53,13 @@ LOG_DIR=${LOG_DIR:-"/var/log/nsqd"}
 
 mkdir -p ${LOG_DIR}
 
-source /etc/nsq/nsqd
+CONF_FILE="/etc/nsq/nsqd"
+
+if [[ -f ${CONF_FILE} ]]; then
+  source ${CONF_FILE}
+else
+  echo "${CONF_FILE} does not exist"
+  exit 1
 
 nsqd ${NSQD_COMMAND_ARGUMENTS} --lookupd-tcp-address=${NSQD_LOOKUPD_TCP_ADDRESS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
