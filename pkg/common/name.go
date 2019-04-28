@@ -35,5 +35,13 @@ func NsqLookupdConfigMapName(cluster string) string {
 }
 
 func NsqdStatefulSetName(cluster string) string {
-	return cluster
+	return fmt.Sprintf("%s-nsqd", cluster)
+}
+
+func NsqdConfigMapName(cluster string) string {
+	return fmt.Sprintf("%s-nsqd", cluster)
+}
+
+func NsqdVolumeClaimTemplatesName(cluster string) string {
+	return fmt.Sprintf("%s-pvc", cluster)
 }

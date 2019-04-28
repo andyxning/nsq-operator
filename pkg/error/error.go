@@ -23,3 +23,7 @@ var ErrResourceNotOwnedByNsqAdmin = "ErrResourceNotOwnedByNsqAdmin"
 // ErrResourceNotOwnedByNsqLookupd is used as part of the Event 'reason' when nsqlookupd resource fails
 // to sync due to a Deployment/ConfigMap of the same name already existing.
 var ErrResourceNotOwnedByNsqLookupd = "ErrResourceNotOwnedByNsqLookupd"
+
+// ErrResourceNotOwnedByNsqd is used as part of the Event 'reason' when nsqd resource fails
+// to sync due to a StatefulSet/ConfigMap of the same name already existing.
+var ErrResourceNotOwnedByNsqd = "ErrResourceNotOwnedByNsqd"

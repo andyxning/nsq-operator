@@ -34,8 +34,9 @@ type Nsqd struct {
 
 // NsqdSpec is the spec for a Nsqd resource
 type NsqdSpec struct {
-	Image    string `json:"image"`
-	Replicas *int32 `json:"replicas"`
+	Image            string `json:"image"`
+	Replicas         *int32 `json:"replicas"`
+	StorageClassName string `json:"storageClassName"`
 }
 
 // NsqdStatus is the status for a Nsqd resource
