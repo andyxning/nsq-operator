@@ -53,7 +53,13 @@ LOG_DIR=${LOG_DIR:-"/var/log/nsqadmin"}
 
 mdkir -p ${LOG_DIR}
 
-source /etc/nsq/nsqadmin
+CONF_FILE="/etc/nsq/nsqadmin"
+
+if [[ -f ${CONF_FILE} ]]; then
+  source ${CONF_FILE}
+else
+  echo "${CONF_FILE} does not exist"
+  exit 1
 
 nsqadmin ${NSQADMIN_COMMAND_ARGUMENTS} --lookupd-http-address=${NSQADMIN_LOOKUPD_HTTP_ADDRESS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 

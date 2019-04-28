@@ -53,7 +53,13 @@ LOG_DIR=${LOG_DIR:-"/var/log/nsqlookupd"}
 
 mkdir -p ${LOG_DIR}
 
-source /etc/nsq/nsqlookupd
+CONF_FILE="/etc/nsq/nsqlookupd"
+
+if [[ -f ${CONF_FILE} ]]; then
+  source ${CONF_FILE}
+else
+  echo "${CONF_FILE} does not exist"
+  exit 1
 
 nsqlookupd ${NSQLOOKUPD_COMMAND_ARGUMENTS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
