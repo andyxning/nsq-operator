@@ -369,7 +369,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	// If this number of the replicas on the NsqLookupd resource is specified, and the
 	// number does not equal the current desired replicas on the deployment, we
 	// should update the deployment resource.
-	if nl.Spec.Replicas != nil && *nl.Spec.Replicas != *deployment.Spec.Replicas {
+	if (nl.Spec.Replicas != nil && *nl.Spec.Replicas != *deployment.Spec.Replicas) || (nl.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image) {
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of deployment before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
@@ -379,7 +379,9 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 			}
 			deploymentCopy := deploymentOld.DeepCopy()
 			deploymentCopy.Spec.Replicas = nl.Spec.Replicas
-			klog.Infof("NsqLookupd %s replicas: %d, deployment replicas: %d", name, *nl.Spec.Replicas, *deployment.Spec.Replicas)
+			deploymentCopy.Spec.Template.Spec.Containers[0].Image = nl.Spec.Image
+			klog.Infof("NsqLookupd %s/%s replicas: %d, image: %v, deployment replicas: %d, image: %v", namespace, name,
+				*nl.Spec.Replicas, nl.Spec.Image, *deployment.Spec.Replicas, deployment.Spec.Template.Spec.Containers[0].Image)
 			_, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
 			return err
 		})
@@ -559,12 +561,13 @@ func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.N
 
 	var addresses []string
 	for _, pod := range podList.Items {
-		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, nlc.opts.NsqLookupdPort))
+		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, 4161))
 	}
 
 	return map[string]string{
-		string(constant.NsqAdminHttpAddress):        fmt.Sprintf("0.0.0.0:%v", nlc.opts.NsqAdminPort),
-		string(constant.NsqAdminLookupdHttpAddress): common.AssembleNsqLookupdAddresses(addresses),
+		"nsqadmin": fmt.Sprintf("%s=%q\n%s=%q",
+			string(constant.NsqAdminCommandArguments), fmt.Sprintf("-http-address=0.0.0.0:%v", 4171),
+			string(constant.NsqAdminLookupdHttpAddress), common.AssembleNsqLookupdAddresses(addresses)),
 	}, nil
 }
 
@@ -648,7 +651,7 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/ping",
-										Port:   intstr.FromInt(nlc.opts.NsqLookupdPort),
+										Port:   intstr.FromInt(4161),
 										Scheme: corev1.URISchemeHTTP,
 									},
 								},
@@ -662,7 +665,7 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/ping",
-										Port: intstr.FromInt(nlc.opts.NsqLookupdPort),
+										Port: intstr.FromInt(4161),
 									},
 								},
 								InitialDelaySeconds: 3,

@@ -23,6 +23,6 @@ spec:
             replicas:
               type: integer
               minimum: 1
-              maximum: 1024
+              maximum: 16
             image:
               type: string
