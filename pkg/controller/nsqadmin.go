@@ -381,7 +381,7 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 
 			deploymentCopy := deploymentOld.DeepCopy()
 			deploymentCopy.Spec.Replicas = na.Spec.Replicas
-			klog.Infof("NsqAdmin %s replicas: %d, deployment replicas: %d", name, *na.Spec.Replicas, *deployment.Spec.Replicas)
+			klog.Infof("NsqAdmin %s/%s replicas: %d, deployment replicas: %d", namespace, name, *na.Spec.Replicas, *deployment.Spec.Replicas)
 			_, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
 			return err
 		})
@@ -538,7 +538,7 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/ping",
-										Port:   intstr.FromInt(nac.opts.NsqAdminPort),
+										Port:   intstr.FromInt(4171),
 										Scheme: corev1.URISchemeHTTP,
 									},
 								},
@@ -552,7 +552,7 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/ping",
-										Port: intstr.FromInt(nac.opts.NsqAdminPort),
+										Port: intstr.FromInt(4171),
 									},
 								},
 								InitialDelaySeconds: 3,

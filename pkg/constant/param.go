@@ -19,6 +19,10 @@ package constant
 type ParamName string
 
 const (
-	NsqAdminHttpAddress        ParamName = "NSQADMIN_HTTP_ADDRESS"
+	NsqAdminCommandArguments   ParamName = "NSQADMIN_COMMAND_ARGUMENTS"
 	NsqAdminLookupdHttpAddress ParamName = "NSQADMIN_LOOKUPD_HTTP_ADDRESS"
+
+	NsqLookupdCommandArguments ParamName = "NSQLOOKUPD_COMMAND_ARGUMENTS"
+	NsqdCommandArguments       ParamName = "NSQD_COMMAND_ARGUMENTS"
+	NsqdLookupdTcpAddress      ParamName = "NSQD_LOOKUPD_TCP_ADDRESS"
 )

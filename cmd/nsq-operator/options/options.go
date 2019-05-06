@@ -39,10 +39,6 @@ type Options struct {
 	NsqLookupdControllerWorker int
 	NsqdControllerWorker       int
 
-	NsqAdminPort   int
-	NsqLookupdPort int
-	NsqdPort       int
-
 	nsqAdminCPULimit      string
 	nsqAdminCPURequest    string
 	nsqAdminMemoryLimit   string
@@ -98,10 +94,6 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.LeaseNamespace, "lease-namespace", "default", "Lease lock resource namespace")
 	pflag.BoolVar(&o.Version, "version", false, "Print version")
 
-	pflag.IntVar(&o.NsqAdminPort, "nsqadmin-port", 4171, "Port for a nsqadmin instance")
-	pflag.IntVar(&o.NsqLookupdPort, "nsqlookupd-port", 4161, "Port for a nsqlookupd instance")
-	pflag.IntVar(&o.NsqdPort, "nsqd-port", 4151, "Port for a nsqd instance")
-
 	pflag.IntVar(&o.NsqAdminControllerWorker, "nsqadmin-controller-worker", 8, "Worker number for nsqadmin controller")
 	pflag.IntVar(&o.NsqLookupdControllerWorker, "nsqlookupd-controller-worker", 8, "Worker number for nsqlookupd controller")
 	pflag.IntVar(&o.NsqdControllerWorker, "nsqd-controller-worker", 8, "Worker number for nsqd controller")
@@ -133,10 +125,10 @@ func (o *Options) MustParse() {
 	o.NsqLookupdCPULimitResource = resource.MustParse(o.nsqLookupdCPULimit)
 	o.NsqLookupdMemoryLimitResource = resource.MustParse(o.nsqLookupdMemoryLimit)
 	o.NsqLookupdCPURequestResource = resource.MustParse(o.nsqLookupdCPURequest)
-	o.NsqLookupdMemoryRequestResource = resource.MustParse(o.nsqLookupdMemoryLimit)
+	o.NsqLookupdMemoryRequestResource = resource.MustParse(o.nsqLookupdMemoryRequest)
 
 	o.NsqdCPULimitResource = resource.MustParse(o.nsqdCPULimit)
 	o.NsqdMemoryLimitResource = resource.MustParse(o.nsqdMemoryLimit)
 	o.NsqdCPURequestResource = resource.MustParse(o.nsqdCPURequest)
-	o.NsqdMemoryRequestResource = resource.MustParse(o.nsqdMemoryLimit)
+	o.NsqdMemoryRequestResource = resource.MustParse(o.nsqdMemoryRequest)
 }

@@ -382,7 +382,7 @@ func (ndc *NsqdController) syncHandler(key string) error {
 
 			statefulSetCopy := statefulSetOld.DeepCopy()
 			statefulSetCopy.Spec.Replicas = nd.Spec.Replicas
-			klog.Infof("Nsqd %s replicas: %d, statefulset replicas: %d", name, *nd.Spec.Replicas, *statefulSet.Spec.Replicas)
+			klog.Infof("Nsqd %s/%s replicas: %d, statefulset replicas: %d", namespace, name, *nd.Spec.Replicas, *statefulSet.Spec.Replicas)
 			_, err = ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Update(statefulSetCopy)
 			return err
 		})
@@ -518,6 +518,16 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 						{
 							Name:  nd.Name,
 							Image: nd.Spec.Image,
+							Env: []corev1.EnvVar{
+								{
+									Name: "NODE_IP",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "spec.nodeName",
+										},
+									},
+								},
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      common.NsqdConfigMapName(nd.Name),
@@ -543,7 +553,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/ping",
-										Port:   intstr.FromInt(ndc.opts.NsqdPort),
+										Port:   intstr.FromInt(4151),
 										Scheme: corev1.URISchemeHTTP,
 									},
 								},
@@ -557,7 +567,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/ping",
-										Port: intstr.FromInt(ndc.opts.NsqdPort),
+										Port: intstr.FromInt(4151),
 									},
 								},
 								InitialDelaySeconds: 3,

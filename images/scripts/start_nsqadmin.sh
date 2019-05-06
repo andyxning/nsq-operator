@@ -51,7 +51,7 @@ trap _int SIGINT
 
 LOG_DIR=${LOG_DIR:-"/var/log/nsqadmin"}
 
-mdkir -p ${LOG_DIR}
+mkdir -p ${LOG_DIR}
 
 CONF_FILE="/etc/nsq/nsqadmin"
 

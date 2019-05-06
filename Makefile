@@ -8,13 +8,13 @@ ldflags := $(shell ./hack/version.sh)
 PKG_PREFIX := github.com/andyxning/nsq-operator
 
 vet:
-	go list ./... | grep -v "./vendor/*" | xargs go vet
+	go list ./... | grep -v "pkg/sdk/examples" | xargs go vet
 
 fmt:
 	find . -type f -name "*.go" | grep -v "./vendor/*" | xargs gofmt -s -w -l
 
 test:
-	go test -timeout=1m -v -race $(shell go list ./...)
+	go test -timeout=1m -v -race $(shell go list ./... | grep -v "pkg/sdk/examples")
 
 build: clean
 	go build -ldflags="${ldflags}" -o nsq-operator ${PKG_PREFIX}/cmd/nsq-operator
