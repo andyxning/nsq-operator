@@ -60,7 +60,8 @@ if [[ -f ${CONF_FILE} ]]; then
 else
   echo "${CONF_FILE} does not exist"
   exit 1
+fi
 
-nsqlookupd ${NSQLOOKUPD_COMMAND_ARGUMENTS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqlookupd ${NSQLOOKUPD_COMMAND_ARGUMENTS} 2>&1 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait

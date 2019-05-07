@@ -60,7 +60,8 @@ if [[ -f ${CONF_FILE} ]]; then
 else
   echo "${CONF_FILE} does not exist"
   exit 1
+fi
 
-nsqadmin ${NSQADMIN_COMMAND_ARGUMENTS} --lookupd-http-address=${NSQADMIN_LOOKUPD_HTTP_ADDRESS} | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqadmin ${NSQADMIN_COMMAND_ARGUMENTS} --lookupd-http-address=${NSQADMIN_LOOKUPD_HTTP_ADDRESS} 2>&1 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait

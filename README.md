@@ -3,9 +3,9 @@
 
 # Status
 **nsq-operator** is currently in **Alpha** stage. Until **GA** status is clearly stated, it is not recommended to run 
-`nsq-operator` in production. 
+**nsq-operator** in production. 
 
-But, we encourage end users to give **nsq-operator** a try, i.e., testing and benching `nsq-operator`, and give us 
+But, we encourage end users to give **nsq-operator** a try, i.e., testing and benching **nsq-operator**, and give us 
 some feedback.
 
 # SDK

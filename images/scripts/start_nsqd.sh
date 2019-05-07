@@ -60,7 +60,8 @@ if [[ -f ${CONF_FILE} ]]; then
 else
   echo "${CONF_FILE} does not exist"
   exit 1
+fi
 
-nsqd ${NSQD_COMMAND_ARGUMENTS} --lookupd-tcp-address=${NSQD_LOOKUPD_TCP_ADDRESS} -statsd-address=${NODE_IP}:8125 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqd ${NSQD_COMMAND_ARGUMENTS} --lookupd-tcp-address=${NSQD_LOOKUPD_TCP_ADDRESS} -statsd-address=${NODE_IP}:8125 2>&1 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait
