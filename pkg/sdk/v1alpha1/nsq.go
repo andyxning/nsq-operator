@@ -23,6 +23,7 @@ import (
 
 	"github.com/andyxning/nsq-operator/pkg/apis/nsqio/v1alpha1"
 	pkgcommon "github.com/andyxning/nsq-operator/pkg/common"
+	"github.com/andyxning/nsq-operator/pkg/constant"
 	"github.com/andyxning/nsq-operator/pkg/generated/clientset/versioned"
 	"github.com/andyxning/nsq-operator/pkg/sdk/v1alpha1/common"
 	"github.com/andyxning/nsq-operator/pkg/sdk/v1alpha1/types"
@@ -209,7 +210,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 	var addresses []string
 	for _, pod := range podList.Items {
-		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, 4161))
+		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdHttpPort))
 	}
 
 	nsqdCM := common.AssembleNsqdConfigMap(nr, addresses)
@@ -642,4 +643,7 @@ func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdScaleRequest) err
 	}
 
 	return nil
+}
+
+func AddNsqdChannel(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clientset, request *types.NsqdAddChannelRequest) {
 }

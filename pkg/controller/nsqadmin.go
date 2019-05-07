@@ -538,7 +538,7 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/ping",
-										Port:   intstr.FromInt(4171),
+										Port:   intstr.FromInt(constant.NsqAdminHttpPort),
 										Scheme: corev1.URISchemeHTTP,
 									},
 								},
@@ -551,8 +551,9 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 							ReadinessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/ping",
-										Port: intstr.FromInt(4171),
+										Path:   "/ping",
+										Port:   intstr.FromInt(constant.NsqAdminHttpPort),
+										Scheme: corev1.URISchemeHTTP,
 									},
 								},
 								InitialDelaySeconds: 3,
@@ -563,17 +564,19 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 							},
 						},
 					},
-					Volumes: []corev1.Volume{{
-						Name: common.NsqAdminConfigMapName(na.Name),
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: common.NsqAdminConfigMapName(na.Name),
+					Volumes: []corev1.Volume{
+						{
+							Name: common.NsqAdminConfigMapName(na.Name),
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: common.NsqAdminConfigMapName(na.Name),
+									},
 								},
 							},
 						},
 					},
-					},
+					TerminationGracePeriodSeconds: &nac.opts.NsqAdminTerminationGracePeriodSeconds,
 				},
 			},
 		},

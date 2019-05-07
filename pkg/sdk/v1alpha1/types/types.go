@@ -209,3 +209,43 @@ func NewNsqdScaleRequest(name string, namespace string, replicas int32) *NsqdSca
 func (ndsr *NsqdScaleRequest) SetWaitTimeout(wt *time.Duration) {
 	ndsr.WaitTimeout = wt
 }
+
+type NsqdAddChannelRequest struct {
+	Name      string
+	Namespace string
+
+	WaitTimeout *time.Duration
+}
+
+func NewNsqdAddChannelRequest(name string, namespace string) *NsqdAddChannelRequest {
+	return &NsqdAddChannelRequest{
+		Name:      name,
+		Namespace: namespace,
+
+		WaitTimeout: &waitTimeout,
+	}
+}
+
+func (ndac *NsqdAddChannelRequest) SetWaitTimeout(wt *time.Duration) {
+	ndac.WaitTimeout = wt
+}
+
+type NsqdDeleteChannelRequest struct {
+	Name      string
+	Namespace string
+
+	WaitTimeout *time.Duration
+}
+
+func NewNsqdDeleteChannelRequest(name string, namespace string) *NsqdDeleteChannelRequest {
+	return &NsqdDeleteChannelRequest{
+		Name:      name,
+		Namespace: namespace,
+
+		WaitTimeout: &waitTimeout,
+	}
+}
+
+func (nddc *NsqdDeleteChannelRequest) SetWaitTimeout(wt *time.Duration) {
+	nddc.WaitTimeout = wt
+}
