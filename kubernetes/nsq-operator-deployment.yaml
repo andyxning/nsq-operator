@@ -13,12 +13,24 @@ spec:
       labels:
         app: nsq-operator
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - nsq-operator
+                topologyKey: "kubernetes.io/hostname"
       containers:
         - name: nsq-operator
-          image: dockerops123/nsq-operator:0.2.0
+          image: dockerops123/nsq-operator:0.3.0
           imagePullPolicy: Always
           ports:
-            - name: http-metrics
+            - name: http
               containerPort: 3080
           readinessProbe:
             httpGet:
@@ -36,8 +48,8 @@ spec:
             periodSeconds: 30
           resources:
             requests:
-              cpu: "0.1"
-              memory: "500Mi"
+              cpu: "2"
+              memory: "2Gi"
             limits:
-              cpu: "0.1"
-              memory: "500Mi"
+              cpu: "2"
+              memory: "2Gi"
