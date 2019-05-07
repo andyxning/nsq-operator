@@ -553,7 +553,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/ping",
-										Port:   intstr.FromInt(4151),
+										Port:   intstr.FromInt(constant.NsqdHttpPort),
 										Scheme: corev1.URISchemeHTTP,
 									},
 								},
@@ -566,8 +566,9 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 							ReadinessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/ping",
-										Port: intstr.FromInt(4151),
+										Path:   "/ping",
+										Port:   intstr.FromInt(constant.NsqdHttpPort),
+										Scheme: corev1.URISchemeHTTP,
 									},
 								},
 								InitialDelaySeconds: 3,
@@ -590,6 +591,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 							},
 						},
 					},
+					TerminationGracePeriodSeconds: &ndc.opts.NsqdTerminationGracePeriodSeconds,
 				},
 			},
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,

@@ -561,12 +561,12 @@ func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.N
 
 	var addresses []string
 	for _, pod := range podList.Items {
-		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, 4161))
+		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdHttpPort))
 	}
 
 	return map[string]string{
 		"nsqadmin": fmt.Sprintf("%s=%q\n%s=%q",
-			string(constant.NsqAdminCommandArguments), fmt.Sprintf("-http-address=0.0.0.0:%v", 4171),
+			string(constant.NsqAdminCommandArguments), fmt.Sprintf("-http-address=0.0.0.0:%v", constant.NsqAdminHttpPort),
 			string(constant.NsqAdminLookupdHttpAddress), common.AssembleNsqLookupdAddresses(addresses)),
 	}, nil
 }
@@ -651,7 +651,7 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/ping",
-										Port:   intstr.FromInt(4161),
+										Port:   intstr.FromInt(constant.NsqLookupdHttpPort),
 										Scheme: corev1.URISchemeHTTP,
 									},
 								},
@@ -664,8 +664,9 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 							ReadinessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/ping",
-										Port: intstr.FromInt(4161),
+										Path:   "/ping",
+										Port:   intstr.FromInt(constant.NsqLookupdHttpPort),
+										Scheme: corev1.URISchemeHTTP,
 									},
 								},
 								InitialDelaySeconds: 3,
@@ -676,17 +677,19 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 							},
 						},
 					},
-					Volumes: []corev1.Volume{{
-						Name: common.NsqLookupdConfigMapName(nl.Name),
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: common.NsqLookupdConfigMapName(nl.Name),
+					Volumes: []corev1.Volume{
+						{
+							Name: common.NsqLookupdConfigMapName(nl.Name),
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: common.NsqLookupdConfigMapName(nl.Name),
+									},
 								},
 							},
 						},
 					},
-					},
+					TerminationGracePeriodSeconds: &nlc.opts.NsqLookupdTerminationGracePeriodSeconds,
 				},
 			},
 		},

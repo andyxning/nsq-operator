@@ -1,5 +1,5 @@
 NSQ_COMPONENTS := nsqd nsqlookupd nsqadmin
-NSQ_OPERATOR_VERSION := 0.2.0
+NSQ_OPERATOR_VERSION := 0.3.0
 GOLANG_VERSION := 1.12.4
 
 nsq-images := $(addprefix .image-, ${NSQ_COMPONENTS})

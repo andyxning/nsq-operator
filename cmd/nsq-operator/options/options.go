@@ -35,6 +35,10 @@ type Options struct {
 	LeaseName      string
 	LeaseNamespace string
 
+	NsqAdminTerminationGracePeriodSeconds   int64
+	NsqLookupdTerminationGracePeriodSeconds int64
+	NsqdTerminationGracePeriodSeconds       int64
+
 	NsqAdminControllerWorker   int
 	NsqLookupdControllerWorker int
 	NsqdControllerWorker       int
@@ -97,6 +101,10 @@ func (o *Options) MustRegisterFlags() {
 	pflag.IntVar(&o.NsqAdminControllerWorker, "nsqadmin-controller-worker", 8, "Worker number for nsqadmin controller")
 	pflag.IntVar(&o.NsqLookupdControllerWorker, "nsqlookupd-controller-worker", 8, "Worker number for nsqlookupd controller")
 	pflag.IntVar(&o.NsqdControllerWorker, "nsqd-controller-worker", 8, "Worker number for nsqd controller")
+
+	pflag.Int64Var(&o.NsqAdminTerminationGracePeriodSeconds, "nsqadmin-termination-grace-period-seconds", 60, "Termination grace period seconds for nsqadmin resource object")
+	pflag.Int64Var(&o.NsqLookupdTerminationGracePeriodSeconds, "nsqlookupd-termination-grace-period-seconds", 60, "Termination grace period seconds for nsqlookupd resource object")
+	pflag.Int64Var(&o.NsqdTerminationGracePeriodSeconds, "nsqd-termination-grace-period-seconds", 300, "Termination grace period seconds for nsqd resource object")
 
 	pflag.StringVar(&o.nsqAdminMemoryLimit, "nsqadmin-mem-limit", "200Mi", "Memory limit resource value for a nsqadmin instance")
 	pflag.StringVar(&o.nsqAdminCPULimit, "nsqadmin-cpu-limit", "300m", "CPU limit resource value for a nsqadmin instance")
