@@ -48,13 +48,12 @@ func main() {
 	opts.MustRegisterFlags()
 	opts.MustParse()
 
+	httpServerOnce := sync.Once{}
+
 	if opts.Version {
 		fmt.Printf("%#v\n", version.Get())
 		os.Exit(0)
 	}
-
-	registerHttpHandler()
-	go startHttpServer(opts.HttpAddress)
 
 	stopCh := signal.SetupSignalHandler()
 
@@ -110,6 +109,11 @@ func main() {
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
+				httpServerOnce.Do(func() {
+					registerHttpHandler()
+					go startHttpServer(opts.HttpAddress)
+				})
+
 				klog.Infof("%s: leading", opts.LeaseID)
 
 				nsqClient, err := nsqclientset.NewForConfig(cfg)
@@ -178,6 +182,11 @@ func main() {
 				klog.Infof("%s: lost", opts.LeaseID)
 			},
 			OnNewLeader: func(identity string) {
+				httpServerOnce.Do(func() {
+					registerHttpHandler()
+					go startHttpServer(opts.HttpAddress)
+				})
+
 				// we're notified when new leader elected
 				if identity == opts.LeaseID {
 					// I just got the lock
