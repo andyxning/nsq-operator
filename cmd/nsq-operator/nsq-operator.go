@@ -54,7 +54,7 @@ func main() {
 	}
 
 	registerHttpHandler()
-	go startHttpServer(opts.PrometheusAddress)
+	go startHttpServer(opts.HttpAddress)
 
 	stopCh := signal.SetupSignalHandler()
 
@@ -105,8 +105,8 @@ func main() {
 		// get elected before your background loop finished, violating
 		// the stated goal of the lease.
 		ReleaseOnCancel: true,
-		LeaseDuration:   30 * time.Second,
-		RenewDeadline:   15 * time.Second,
+		LeaseDuration:   15 * time.Second,
+		RenewDeadline:   10 * time.Second,
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
