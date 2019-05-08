@@ -29,7 +29,7 @@ type Options struct {
 	APIServerURL string
 	KubeConfig   string
 
-	PrometheusAddress string
+	HttpAddress string
 
 	LeaseID        string
 	LeaseName      string
@@ -92,7 +92,7 @@ func (o *Options) MustRegisterFlags() {
 
 	pflag.StringVar(&o.APIServerURL, "api-server-url", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster")
 	pflag.StringVar(&o.KubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster")
-	pflag.StringVar(&o.PrometheusAddress, "prometheus-address", "0.0.0.0:3080", "Prometheus metrics api address")
+	pflag.StringVar(&o.HttpAddress, "http-address", "0.0.0.0:3080", "HTTP api address")
 	pflag.StringVar(&o.LeaseID, "lease-id", hostName, "Lease lock identify name for a nsq-operator instance in a HA environment")
 	pflag.StringVar(&o.LeaseName, "lease-name", "nsq-operator", "Lease lock resource name")
 	pflag.StringVar(&o.LeaseNamespace, "lease-namespace", "default", "Lease lock resource namespace")
