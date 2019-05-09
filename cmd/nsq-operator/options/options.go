@@ -53,10 +53,11 @@ type Options struct {
 	nsqLookupdMemoryLimit   string
 	nsqLookupdMemoryRequest string
 
-	nsqdCPULimit      string
-	nsqdCPURequest    string
-	nsqdMemoryLimit   string
-	nsqdMemoryRequest string
+	nsqdCPULimit           string
+	nsqdCPURequest         string
+	nsqdMemoryLimit        string
+	nsqdMemoryRequest      string
+	nsqdPVCStorageResource string
 
 	NsqAdminCPULimitResource      resource.Quantity
 	NsqAdminCPURequestResource    resource.Quantity
@@ -72,6 +73,7 @@ type Options struct {
 	NsqdCPURequestResource    resource.Quantity
 	NsqdMemoryLimitResource   resource.Quantity
 	NsqdMemoryRequestResource resource.Quantity
+	NsqdPVCStorageResource    resource.Quantity
 
 	Version bool
 }
@@ -120,6 +122,7 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.nsqdCPULimit, "nsqd-cpu-limit", "300m", "CPU limit resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdMemoryRequest, "nsqd-mem-request", "150Mi", "Memory request resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "250m", "CPU request resource value for a nsqd instance")
+	pflag.StringVar(&o.nsqdPVCStorageResource, "nsqd-pvc-storage-resource", "256Gi", "Storage resource value for a nsqd instance")
 }
 
 func (o *Options) MustParse() {
@@ -139,4 +142,5 @@ func (o *Options) MustParse() {
 	o.NsqdMemoryLimitResource = resource.MustParse(o.nsqdMemoryLimit)
 	o.NsqdCPURequestResource = resource.MustParse(o.nsqdCPURequest)
 	o.NsqdMemoryRequestResource = resource.MustParse(o.nsqdMemoryRequest)
+	o.NsqdPVCStorageResource = resource.MustParse(o.nsqdPVCStorageResource)
 }

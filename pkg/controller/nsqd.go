@@ -26,7 +26,6 @@ import (
 	"github.com/andyxning/nsq-operator/pkg/constant"
 	"github.com/andyxning/nsq-operator/pkg/generated/informers/externalversions/nsqio/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -609,10 +608,10 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 						StorageClassName: &nd.Spec.StorageClassName,
 						Resources: corev1.ResourceRequirements{
 							Limits: corev1.ResourceList{
-								corev1.ResourceStorage: resource.MustParse("16Mi"),
+								corev1.ResourceStorage: ndc.opts.NsqdPVCStorageResource,
 							},
 							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: resource.MustParse("16Mi"),
+								corev1.ResourceStorage: ndc.opts.NsqdPVCStorageResource,
 							},
 						},
 					},
