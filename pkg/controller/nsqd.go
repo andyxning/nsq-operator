@@ -526,6 +526,10 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 										},
 									},
 								},
+								{
+									Name:  constant.ClusterNameEnv,
+									Value: nd.Name,
+								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{

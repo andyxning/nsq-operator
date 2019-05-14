@@ -534,6 +534,12 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 									corev1.ResourceMemory: nac.opts.NsqAdminMemoryRequestResource,
 								},
 							},
+							Env: []corev1.EnvVar{
+								{
+									Name:  constant.ClusterNameEnv,
+									Value: na.Name,
+								},
+							},
 							LivenessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
