@@ -647,6 +647,12 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 									corev1.ResourceMemory: nlc.opts.NsqLookupdMemoryRequestResource,
 								},
 							},
+							Env: []corev1.EnvVar{
+								{
+									Name:  constant.ClusterNameEnv,
+									Value: nl.Name,
+								},
+							},
 							LivenessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{

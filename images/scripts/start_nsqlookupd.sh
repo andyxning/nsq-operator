@@ -49,10 +49,6 @@ _int() {
 trap _term SIGTERM
 trap _int SIGINT
 
-LOG_DIR=${LOG_DIR:-"/var/log/nsqlookupd"}
-
-mkdir -p ${LOG_DIR}
-
 CONF_FILE="/etc/nsq/nsqlookupd"
 
 if [[ -f ${CONF_FILE} ]]; then
@@ -61,6 +57,10 @@ else
   echo "${CONF_FILE} does not exist"
   exit 1
 fi
+
+LOG_DIR=${LOG_DIR:-"/var/log/${NSQ_CLUSTER}/nsqlookupd/$(hostname)"}
+
+mkdir -p ${LOG_DIR}
 
 nsqlookupd ${NSQLOOKUPD_COMMAND_ARGUMENTS} 2>&1 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 

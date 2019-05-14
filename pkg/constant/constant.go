@@ -29,6 +29,9 @@ const (
 	NsqdHttpPort       = 4151
 	NsqdTcpPort        = 4150
 
+	// Cluster environment Name
+	ClusterNameEnv = "NSQ_CLUSTER"
+
 	NsqConfigMapMountPath = "/etc/nsq"
 	NsqdDataMountPath     = "/data"
 
