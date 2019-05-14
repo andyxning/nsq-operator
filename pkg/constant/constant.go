@@ -32,6 +32,8 @@ const (
 	// Cluster environment Name
 	ClusterNameEnv = "NSQ_CLUSTER"
 
+	LogVolumeName = "log"
+
 	NsqConfigMapMountPath = "/etc/nsq"
 	NsqdDataMountPath     = "/data"
 

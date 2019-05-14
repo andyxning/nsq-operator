@@ -540,6 +540,10 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 									Name:      common.NsqdVolumeClaimTemplatesName(nd.Name),
 									MountPath: constant.NsqdDataMountPath,
 								},
+								{
+									Name:      constant.LogVolumeName,
+									MountPath: common.NsqdLogMountPath(nd.Name),
+								},
 							},
 							ImagePullPolicy: corev1.PullAlways,
 							Resources: corev1.ResourceRequirements{
@@ -590,6 +594,14 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: common.NsqdConfigMapName(nd.Name),
 									},
+								},
+							},
+						},
+						{
+							Name: constant.LogVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: nd.Spec.LogMappingDir,
 								},
 							},
 						},

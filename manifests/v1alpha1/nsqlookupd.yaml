@@ -26,3 +26,5 @@ spec:
               maximum: 16
             image:
               type: string
+            logMappingDir:
+              type: string

@@ -6,3 +6,4 @@ spec:
   replicas: 2
   image: dockerops123/nsqd:1.1.0
   storageClassName: standard
+  logMappingDir: /var/log/nsqd/

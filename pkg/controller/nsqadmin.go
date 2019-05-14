@@ -522,6 +522,10 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 									Name:      common.NsqAdminConfigMapName(na.Name),
 									MountPath: constant.NsqConfigMapMountPath,
 								},
+								{
+									Name:      constant.LogVolumeName,
+									MountPath: common.NsqAdminLogMountPath(na.Name),
+								},
 							},
 							ImagePullPolicy: corev1.PullAlways,
 							Resources: corev1.ResourceRequirements{
@@ -578,6 +582,14 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: common.NsqAdminConfigMapName(na.Name),
 									},
+								},
+							},
+						},
+						{
+							Name: constant.LogVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: na.Spec.LogMappingDir,
 								},
 							},
 						},

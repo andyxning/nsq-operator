@@ -51,16 +51,19 @@ func main() {
 		Image:            "dockerops123/nsqd:1.1.0",
 		Replicas:         &nsqdReplicas,
 		StorageClassName: "standard",
+		LogMappingDir:    "/var/log/",
 	}
 
 	nls := v1alpha1.NsqLookupdSpec{
-		Image:    "dockerops123/nsqlookupd:1.1.0",
-		Replicas: &nsqLookupdReplicas,
+		Image:         "dockerops123/nsqlookupd:1.1.0",
+		Replicas:      &nsqLookupdReplicas,
+		LogMappingDir: "/var/log/",
 	}
 
 	nas := v1alpha1.NsqAdminSpec{
-		Image:    "dockerops123/nsqadmin:1.1.0",
-		Replicas: &nsqAdminReplicas,
+		Image:         "dockerops123/nsqadmin:1.1.0",
+		Replicas:      &nsqAdminReplicas,
+		LogMappingDir: "/var/log/",
 	}
 
 	nr := types.NewNsqCreateRequest(name, namespace, messageAvgSize, nds, nls, nas)
