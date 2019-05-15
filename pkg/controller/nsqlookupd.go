@@ -565,7 +565,7 @@ func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.N
 	}
 
 	return map[string]string{
-		"nsqadmin": fmt.Sprintf("%s=%q\n%s=%q",
+		"nsqadmin": fmt.Sprintf("%s=%q\n%s=%q\n",
 			string(constant.NsqAdminCommandArguments), fmt.Sprintf("-http-address=0.0.0.0:%v", constant.NsqAdminHttpPort),
 			string(constant.NsqAdminLookupdHttpAddress), common.AssembleNsqLookupdAddresses(addresses)),
 	}, nil

@@ -34,7 +34,7 @@ func AssembleNsqLookupdConfigMap(nr *types.NsqCreateRequest) *corev1.ConfigMap {
 			Namespace: nr.Namespace,
 		},
 		Data: map[string]string{
-			"nsqlookupd": fmt.Sprintf(`%s="--http-address=0.0.0.0:%v --tcp-address=0.0.0.0:%v"`,
+			"nsqlookupd": fmt.Sprintf(`%s="--http-address=0.0.0.0:%v --tcp-address=0.0.0.0:%v\n"`,
 				constant.NsqLookupdCommandArguments, constant.NsqLookupdHttpPort, constant.NsqLookupdTcpPort),
 		},
 	}
@@ -47,7 +47,7 @@ func AssembleNsqdConfigMap(nr *types.NsqCreateRequest, addresses []string) *core
 			Namespace: nr.Namespace,
 		},
 		Data: map[string]string{
-			"nsqd": fmt.Sprintf("%s=%q\n%s=%q",
+			"nsqd": fmt.Sprintf("%s=%q\n%s=%q\n",
 				constant.NsqdCommandArguments, assembleNsqdCommandArguments(nr),
 				constant.NsqdLookupdTcpAddress, common.AssembleNsqLookupdAddresses(addresses)),
 		},

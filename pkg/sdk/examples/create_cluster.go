@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+
 	"github.com/andyxning/nsq-operator/pkg/sdk/examples/common"
 	"k8s.io/klog"
 
@@ -51,19 +53,19 @@ func main() {
 		Image:            "dockerops123/nsqd:1.1.0",
 		Replicas:         &nsqdReplicas,
 		StorageClassName: "standard",
-		LogMappingDir:    "/var/log/",
+		LogMappingDir:    fmt.Sprintf("/var/log/%s", name),
 	}
 
 	nls := v1alpha1.NsqLookupdSpec{
 		Image:         "dockerops123/nsqlookupd:1.1.0",
 		Replicas:      &nsqLookupdReplicas,
-		LogMappingDir: "/var/log/",
+		LogMappingDir: fmt.Sprintf("/var/log/%s", name),
 	}
 
 	nas := v1alpha1.NsqAdminSpec{
 		Image:         "dockerops123/nsqadmin:1.1.0",
 		Replicas:      &nsqAdminReplicas,
-		LogMappingDir: "/var/log/",
+		LogMappingDir: fmt.Sprintf("/var/log/%s", name),
 	}
 
 	nr := types.NewNsqCreateRequest(name, namespace, messageAvgSize, nds, nls, nas)
