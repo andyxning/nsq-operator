@@ -15,8 +15,23 @@ limitations under the License.
 */
 package common
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 func AssembleNsqLookupdAddresses(nsqLookupdAddressed []string) string {
 	return strings.Join(nsqLookupdAddressed, ",")
+}
+
+func NsqdLogMountPath(cluster string) string {
+	return fmt.Sprintf("/var/log/%s/", cluster)
+}
+
+func NsqLookupdLogMountPath(cluster string) string {
+	return fmt.Sprintf("/var/log/%s/", cluster)
+}
+
+func NsqAdminLogMountPath(cluster string) string {
+	return fmt.Sprintf("/var/log/%s/", cluster)
 }

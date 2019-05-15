@@ -58,8 +58,12 @@ else
   exit 1
 fi
 
-LOG_DIR=${LOG_DIR:-"/var/log/${NSQ_CLUSTER}/nsqlookupd/$(hostname)"}
+if [[ -z "${NSQ_CLUSTER}" ]]; then
+  echo "NSQ_CLUSTER environment variable is unset or empty"
+  exit 1
+fi
 
+LOG_DIR=${LOG_DIR:-"/var/log/${NSQ_CLUSTER}/$(hostname)"}
 mkdir -p ${LOG_DIR}
 
 nsqlookupd ${NSQLOOKUPD_COMMAND_ARGUMENTS} 2>&1 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &

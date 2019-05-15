@@ -28,3 +28,5 @@ spec:
               type: string
             storageClassName:
               type: string
+            logMappingDir:
+              type: string

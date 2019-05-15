@@ -37,6 +37,7 @@ type NsqdSpec struct {
 	Image            string `json:"image"`
 	Replicas         *int32 `json:"replicas"`
 	StorageClassName string `json:"storageClassName"`
+	LogMappingDir    string `json:"logMappingDir"`
 }
 
 // NsqdStatus is the status for a Nsqd resource
@@ -68,8 +69,9 @@ type NsqLookupd struct {
 
 // NsqLookupdSpec is the spec for a NsqLookupd resource
 type NsqLookupdSpec struct {
-	Image    string `json:"image"`
-	Replicas *int32 `json:"replicas"`
+	Image         string `json:"image"`
+	Replicas      *int32 `json:"replicas"`
+	LogMappingDir string `json:"logMappingDir"`
 }
 
 // NsqLookupdStatus is the status for a NsqLookupd resource
@@ -101,8 +103,9 @@ type NsqAdmin struct {
 
 // NsqAdminSpec is the spec for a NsqAdmin resource
 type NsqAdminSpec struct {
-	Image    string `json:"image"`
-	Replicas *int32 `json:"replicas"`
+	Image         string `json:"image"`
+	Replicas      *int32 `json:"replicas"`
+	LogMappingDir string `json:"logMappingDir"`
 }
 
 // NsqAdminStatus is the status for a NsqAdmin resource

@@ -635,6 +635,10 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 									Name:      common.NsqLookupdConfigMapName(nl.Name),
 									MountPath: constant.NsqConfigMapMountPath,
 								},
+								{
+									Name:      constant.LogVolumeName,
+									MountPath: common.NsqLookupdLogMountPath(nl.Name),
+								},
 							},
 							ImagePullPolicy: corev1.PullAlways,
 							Resources: corev1.ResourceRequirements{
@@ -691,6 +695,14 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: common.NsqLookupdConfigMapName(nl.Name),
 									},
+								},
+							},
+						},
+						{
+							Name: constant.LogVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: nl.Spec.LogMappingDir,
 								},
 							},
 						},

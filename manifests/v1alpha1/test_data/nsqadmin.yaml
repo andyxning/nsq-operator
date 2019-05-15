@@ -5,3 +5,4 @@ metadata:
 spec:
   replicas: 2
   image: dockerops123/nsqadmin:1.1.0
+  logMappingDir: /var/log/nsqadmin/
