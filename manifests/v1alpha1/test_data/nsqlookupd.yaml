@@ -5,4 +5,4 @@ metadata:
 spec:
   replicas: 2
   image: dockerops123/nsqlookupd:1.1.0
-  logMappingDir: /var/log/nsqlookupd/
+  logMappingDir: /var/log/test
