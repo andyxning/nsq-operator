@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/andyxning/nsq-operator/cmd/nsq-operator/options"
@@ -302,6 +303,14 @@ func (ndc *NsqdController) syncHandler(key string) error {
 		return err
 	}
 
+	// Update ownerReferences for nsqd configmap
+	err = ndc.updateNsqdConfigMapOwnerReference(nd)
+	if err != nil {
+		klog.Errorf("Update ownerReferences for nsqd configmap %s/%s error: %v",
+			nd.Namespace, common.NsqdConfigMapName(nd.Name), err)
+		return err
+	}
+
 	configmapHash, err := common.Hash(configmap.Data)
 	if err != nil {
 		klog.Errorf("Hash configmap data for nsqd %s/%s error: %v", nd.Namespace, nd.Name, err)
@@ -479,6 +488,38 @@ func (ndc *NsqdController) handleObject(obj interface{}) {
 		ndc.enqueueNsqd(nd)
 		return
 	}
+}
+
+// updateNsqdConfigMapOwnerReference updates the OwnerReferences of nsqd configmap to nsqd.
+func (ndc *NsqdController) updateNsqdConfigMapOwnerReference(nd *nsqv1alpha1.Nsqd) error {
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		// Retrieve the latest version of configmap before attempting update
+		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+		result, err := ndc.kubeClientSet.CoreV1().ConfigMaps(nd.Namespace).Get(common.NsqdConfigMapName(nd.Name), metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get latest version of nsqd configmap %v: %v", common.NsqdConfigMapName(nd.Name), err)
+		}
+
+		ownerReferences := []metav1.OwnerReference{
+			*metav1.NewControllerRef(nd, schema.GroupVersionKind{
+				Group:   nsqv1alpha1.SchemeGroupVersion.Group,
+				Version: nsqv1alpha1.SchemeGroupVersion.Version,
+				Kind:    nsqio.NsqdKind,
+			}),
+		}
+
+		if reflect.DeepEqual(result.ObjectMeta.OwnerReferences, ownerReferences) {
+			return nil
+		}
+
+		newCM := result.DeepCopy()
+		newCM.ObjectMeta.OwnerReferences = ownerReferences
+
+		_, err = ndc.kubeClientSet.CoreV1().ConfigMaps(nd.Namespace).Update(newCM)
+		return err
+	})
+
+	return err
 }
 
 // newStatefulSet creates a new StatefulSet for a Nsqd resource. It also sets

@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/andyxning/nsq-operator/cmd/nsq-operator/options"
@@ -302,6 +303,14 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		return err
 	}
 
+	// Update ownerReferences for nsqlookupd configmap
+	err = nlc.updateNsqLookupdConfigMapOwnerReference(nl)
+	if err != nil {
+		klog.Errorf("Update ownerReferences for nsqlookupd configmap %s/%s error: %v",
+			nl.Namespace, common.NsqLookupdConfigMapName(nl.Name), err)
+		return err
+	}
+
 	configmapHash, err := common.Hash(configmap.Data)
 	if err != nil {
 		klog.Errorf("Hash configmap data for nsqlookupd %s/%s error: %v", nl.Namespace, nl.Name, err)
@@ -569,6 +578,38 @@ func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.N
 			string(constant.NsqAdminCommandArguments), fmt.Sprintf("-http-address=0.0.0.0:%v", constant.NsqAdminHttpPort),
 			string(constant.NsqAdminLookupdHttpAddress), common.AssembleNsqLookupdAddresses(addresses)),
 	}, nil
+}
+
+// updateNsqLookupdConfigMapOwnerReference updates the OwnerReferences of nsqlookupd configmap to nsqlookupd.
+func (nlc *NsqLookupdController) updateNsqLookupdConfigMapOwnerReference(nl *nsqv1alpha1.NsqLookupd) error {
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		// Retrieve the latest version of configmap before attempting update
+		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+		result, err := nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Get(common.NsqLookupdConfigMapName(nl.Name), metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get latest version of nsqlookupd configmap %v: %v", common.NsqLookupdConfigMapName(nl.Name), err)
+		}
+
+		ownerReferences := []metav1.OwnerReference{
+			*metav1.NewControllerRef(nl, schema.GroupVersionKind{
+				Group:   nsqv1alpha1.SchemeGroupVersion.Group,
+				Version: nsqv1alpha1.SchemeGroupVersion.Version,
+				Kind:    nsqio.NsqLookupdKind,
+			}),
+		}
+
+		if reflect.DeepEqual(result.ObjectMeta.OwnerReferences, ownerReferences) {
+			return nil
+		}
+
+		newCM := result.DeepCopy()
+		newCM.ObjectMeta.OwnerReferences = ownerReferences
+
+		_, err = nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Update(newCM)
+		return err
+	})
+
+	return err
 }
 
 // newNsqAdminConfigMap creates a configmap for a NsqAdmin resource.
