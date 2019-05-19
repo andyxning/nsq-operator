@@ -19,6 +19,7 @@ package controller
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/andyxning/nsq-operator/cmd/nsq-operator/options"
@@ -414,8 +415,22 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	nsqAdminConfigMap, err := nlc.configmapsLister.ConfigMaps(nl.Namespace).Get(nsqAdminConfigMapName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) && *nl.Spec.Replicas == deployment.Status.AvailableReplicas {
+		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			return fmt.Errorf("failed to generate label selector for nsqlookupd %s/%s: %v", nl.Namespace, nl.Name, err)
+		}
+
+		podList, err := nlc.kubeClientSet.CoreV1().Pods(nl.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to list nsqlookupd %s/%s pods: %v", nl.Namespace, nl.Name, err)
+		}
+
 		klog.Infof("Configmap for nsqadmin %s/%s does not exist. Create it", nl.Namespace, nl.Name)
-		nsqAdminConfigMap, err := nlc.newNsqAdminConfigMap(nl)
+		nsqAdminConfigMap, err := nlc.newNsqAdminConfigMap(nl, podList)
 		if err != nil {
 			klog.Infof("Gen nsqadmin configmap %s/%s error: %v", nl.Namespace, nl.Name, err)
 			return err
@@ -434,8 +449,23 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	if err != nil {
 		return err
 	}
-	// Try to update the nsqadmin configmap only if nsqlookupd is stable, i.e., when the status matches the spec
+	// Try to update the nsqadmin/nsqd configmap only if nsqlookupd is stable, i.e., when the status matches the spec
 	if *newNL.Spec.Replicas == newNL.Status.AvailableReplicas {
+		klog.Infof("Nsqlookupd %s/%s instances change. Update nsqadmin and nsqd configmap", nl.Namespace, nl.Name)
+		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			return fmt.Errorf("failed to generate label selector for nsqlookupd %s/%s: %v", nl.Namespace, nl.Name, err)
+		}
+
+		podList, err := nlc.kubeClientSet.CoreV1().Pods(nl.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to list nsqlookupd %s/%s pods: %v", nl.Namespace, nl.Name, err)
+		}
+
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of configmap before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
@@ -444,7 +474,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 				return fmt.Errorf("failed to get latest version of nsqadmin configmap %v: %v", common.NsqAdminConfigMapName(nl.Name), err)
 			}
 
-			data, err := nlc.assembleNsqAdminConfigMapData(nl)
+			data, err := nlc.assembleNsqAdminConfigMapData(nl, podList)
 			if err != nil {
 				return fmt.Errorf("failed to assemble nsqadmin configmap %s/%s data: %v", nl.Namespace, common.NsqAdminConfigMapName(nl.Name), err)
 			}
@@ -462,6 +492,37 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		if err != nil {
 			return err
 		}
+
+		klog.Infof("Nsqlookupd %s/%s instances change. Update nsqadmin configmap %s/%s success", nl.Namespace, nl.Name,
+			nl.Namespace, common.NsqAdminConfigMapName(nl.Name))
+
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Retrieve the latest version of configmap before attempting update
+			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+			result, err := nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Get(common.NsqdConfigMapName(nl.Name), metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to get latest version of nsqd configmap %v: %v", common.NsqdConfigMapName(nl.Name), err)
+			}
+
+			newCM := result.DeepCopy()
+			err = nlc.updateNsqdConfigMapData(newCM, nl, podList)
+			if err != nil {
+				return fmt.Errorf("failed to update nsqd configmap %s/%s data: %v", nl.Namespace, common.NsqdConfigMapName(nl.Name), err)
+			}
+
+			_, err = nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Update(newCM)
+			return err
+		})
+
+		// If an error occurs during Get/Create, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
+
+		klog.Infof("Nsqlookupd %s/%s instances change. Update nsqd configmap %s/%s success", nl.Namespace, nl.Name,
+			nl.Namespace, common.NsqdConfigMapName(nl.Name))
 	}
 
 	// If the configmap is not controlled by this NsqLookupd resource, we should log
@@ -553,21 +614,7 @@ func (nlc *NsqLookupdController) handleObject(obj interface{}) {
 }
 
 // assembleNsqAdminConfigMapData returns nsqadmin configmap data
-func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.NsqLookupd) (map[string]string, error) {
-	labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
-	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
-	if err != nil {
-		return nil, err
-	}
-
-	podList, err := nlc.kubeClientSet.CoreV1().Pods(nl.Namespace).List(metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to list nsqlookupd %v pods: %v", nl.Name, err)
-	}
-
+func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.NsqLookupd, podList *corev1.PodList) (map[string]string, error) {
 	var addresses []string
 	for _, pod := range podList.Items {
 		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdHttpPort))
@@ -578,6 +625,26 @@ func (nlc *NsqLookupdController) assembleNsqAdminConfigMapData(nl *nsqv1alpha1.N
 			string(constant.NsqAdminCommandArguments), fmt.Sprintf("-http-address=0.0.0.0:%v", constant.NsqAdminHttpPort),
 			string(constant.NsqAdminLookupdHttpAddress), common.AssembleNsqLookupdAddresses(addresses)),
 	}, nil
+}
+
+// updateNsqdConfigMapData returns nsqd configmap data
+func (nlc *NsqLookupdController) updateNsqdConfigMapData(newCM *corev1.ConfigMap, nl *nsqv1alpha1.NsqLookupd, podList *corev1.PodList) error {
+	var addresses []string
+	for _, pod := range podList.Items {
+		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdTcpPort))
+	}
+
+	nsqdCommandArguments := strings.Split(newCM.Data["nsqd"], "\n")
+	if len(nsqdCommandArguments) <= 1 {
+		return fmt.Errorf("command arguments for nsqd %s/%s error: there should be at least two lines", nl.Namespace, nl.Name)
+	}
+
+	newCM.Data = map[string]string{
+		"nsqd": fmt.Sprintf("%s\n%s=%q\n",
+			nsqdCommandArguments[0],
+			constant.NsqdLookupdTcpAddress, common.AssembleNsqLookupdAddresses(addresses)),
+	}
+	return nil
 }
 
 // updateNsqLookupdConfigMapOwnerReference updates the OwnerReferences of nsqlookupd configmap to nsqlookupd.
@@ -613,8 +680,8 @@ func (nlc *NsqLookupdController) updateNsqLookupdConfigMapOwnerReference(nl *nsq
 }
 
 // newNsqAdminConfigMap creates a configmap for a NsqAdmin resource.
-func (nlc *NsqLookupdController) newNsqAdminConfigMap(nl *nsqv1alpha1.NsqLookupd) (*corev1.ConfigMap, error) {
-	data, err := nlc.assembleNsqAdminConfigMapData(nl)
+func (nlc *NsqLookupdController) newNsqAdminConfigMap(nl *nsqv1alpha1.NsqLookupd, podList *corev1.PodList) (*corev1.ConfigMap, error) {
+	data, err := nlc.assembleNsqAdminConfigMapData(nl, podList)
 	if err != nil {
 		return nil, err
 	}

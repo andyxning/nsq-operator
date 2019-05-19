@@ -34,7 +34,7 @@ func AssembleNsqLookupdConfigMap(nr *types.NsqCreateRequest) *corev1.ConfigMap {
 			Namespace: nr.Namespace,
 		},
 		Data: map[string]string{
-			"nsqlookupd": fmt.Sprintf(`%s="--http-address=0.0.0.0:%v --tcp-address=0.0.0.0:%v\n"`,
+			"nsqlookupd": fmt.Sprintf("%s=\"--http-address=0.0.0.0:%v --tcp-address=0.0.0.0:%v\n\"",
 				constant.NsqLookupdCommandArguments, constant.NsqLookupdHttpPort, constant.NsqLookupdTcpPort),
 		},
 	}
@@ -58,14 +58,14 @@ func assembleNsqdCommandArguments(nr *types.NsqCreateRequest) string {
 	return fmt.Sprintf("-statsd-interval=%v "+
 		"-statsd-mem-stats=%v "+
 		"-statsd-prefix=nsq_cluster_%s.%s "+
-		"--http-address=0.0.0.0:%v "+
-		"--tcp-address=0.0.0.0:%v "+
-		"--max-req-timeout=%v "+
-		"--mem-queue-size=%v "+
-		"--max-msg-size=%v "+
-		"--max-body-size=%v "+
-		"--sync-every=%v "+
-		"--sync-timeout=%v "+
+		"-http-address=0.0.0.0:%v "+
+		"-tcp-address=0.0.0.0:%v "+
+		"-max-req-timeout=%v "+
+		"-mem-queue-size=%v "+
+		"-max-msg-size=%v "+
+		"-max-body-size=%v "+
+		"-sync-every=%v "+
+		"-sync-timeout=%v "+
 		"-data-path=%v", *nr.NsqdCommandStatsdInterval, *nr.NsqdCommandStatsdMemStats, nr.Name, nr.Name,
 		constant.NsqdHttpPort, constant.NsqdTcpPort,
 		*nr.NsqdCommandMaxRequeueTimeout, *nr.TopicMemoryQueueSize, *nr.NsqdCommandMaxMsgSize,

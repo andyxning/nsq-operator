@@ -66,6 +66,6 @@ fi
 LOG_DIR=${LOG_DIR:-"/var/log/${NSQ_CLUSTER}/$(hostname)"}
 mkdir -p ${LOG_DIR}
 
-nsqd ${NSQD_COMMAND_ARGUMENTS} --lookupd-tcp-address=${NSQD_LOOKUPD_TCP_ADDRESS} -statsd-address=${NODE_IP}:8125 2>&1 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
+nsqd ${NSQD_COMMAND_ARGUMENTS} -lookupd-tcp-address=${NSQD_LOOKUPD_TCP_ADDRESS} -broadcast-address=${POD_IP} -statsd-address=${NODE_IP}:8125 2>&1 | /usr/local/bin/cronolog_alpine ${LOG_DIR}/log.%Y-%m-%d_%H &
 
 wait
