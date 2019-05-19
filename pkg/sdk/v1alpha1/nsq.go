@@ -210,7 +210,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 	var addresses []string
 	for _, pod := range podList.Items {
-		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdHttpPort))
+		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdTcpPort))
 	}
 
 	nsqdCM := common.AssembleNsqdConfigMap(nr, addresses)

@@ -568,6 +568,14 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 									},
 								},
 								{
+									Name: "POD_IP",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "status.podIP",
+										},
+									},
+								},
+								{
 									Name:  constant.ClusterNameEnv,
 									Value: nd.Name,
 								},
