@@ -8,6 +8,10 @@
 But, we encourage end users to give **nsq-operator** a try, i.e., testing and benching **nsq-operator**, and give us 
 some feedback.
 
+# Runtime Requirements
+* Kubernetes >= 1.14.0
+* Golang >= 1.12.0
+
 # SDK
 There is a [sdk](pkg/sdk/v1alpha1) which can be used to CRUD nsq related resource. Files under 
 [examples](pkg/sdk/examples) show sdk use examples.
