@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -258,7 +259,7 @@ func (nlc *NsqLookupdController) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		nlc.workqueue.Forget(obj)
-		klog.Infof("Successfully synced '%s'", key)
+		klog.V(2).Infof("Successfully synced '%s'", key)
 		return nil
 	}(obj)
 
@@ -343,10 +344,12 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		return fmt.Errorf(msg)
 	}
 
+	nsqLookupdInstancesChanged := false
 	klog.V(6).Infof("New configmap hash: %v", configmapHash)
 	klog.V(6).Infof("Old configmap hash: %v", deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 	klog.V(6).Infof("New configmap data: %v", configmap.Data)
 	if deployment.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey] != configmapHash {
+		nsqLookupdInstancesChanged = true
 		klog.Infof("New configmap detected. New config: %v", configmap.Data)
 		var deploymentNew *appsv1.Deployment
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
@@ -373,13 +376,48 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		if err != nil {
 			klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deployment.Name, deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 		}
-		return err
+
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
+			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				klog.Errorf("Failed to generate label selector for nsqlookupd %s/%s: %v", nl.Namespace, nl.Name, err)
+				return
+			}
+
+			podList, err := nlc.kubeClientSet.CoreV1().Pods(nl.Namespace).List(metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+
+			if err != nil {
+				klog.Errorf("Failed to list nsqlookupd %s/%s pods: %v", nl.Namespace, nl.Name, err)
+				return
+			}
+
+			for _, pod := range podList.Items {
+				if val, exists := pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey]; exists && val != configmapHash {
+					klog.Infof("Spec and status signature annotation do not match for nsqlookupd %s/%s. Pod: %v. "+
+						"Spec signature annotation: %v, new signature annotation: %v",
+						nl.Namespace, nl.Name, pod.Name, pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey], configmapHash)
+					return
+				}
+			}
+
+			cancel()
+		}, 8*time.Second)
 	}
 
 	// If this number of the replicas on the NsqLookupd resource is specified, and the
 	// number does not equal the current desired replicas on the deployment, we
-	// should update the deployment resource.
+	// should update the deployment resource. If the image changes, we also should update
+	// the deployment resource.
 	if (nl.Spec.Replicas != nil && *nl.Spec.Replicas != *deployment.Spec.Replicas) || (nl.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image) {
+		nsqLookupdInstancesChanged = true
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of deployment before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
@@ -395,13 +433,48 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 			_, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
 			return err
 		})
-	}
 
-	// If an error occurs during Update, we'll requeue the item so we can
-	// attempt processing again later. This could have been caused by a
-	// temporary network failure, or any other transient reason.
-	if err != nil {
-		return err
+		// If an error occurs during Update, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
+			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				klog.Errorf("Failed to generate label selector for nsqlookupd %s/%s: %v", nl.Namespace, nl.Name, err)
+				return
+			}
+
+			podList, err := nlc.kubeClientSet.CoreV1().Pods(nl.Namespace).List(metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+
+			if err != nil {
+				klog.Errorf("Failed to list nsqlookupd %s/%s pods: %v", nl.Namespace, nl.Name, err)
+				return
+			}
+
+			if int32(len(podList.Items)) != *deployment.Spec.Replicas {
+				klog.Infof("Scaling nsqlookupd %s/%s deployment", nl.Namespace, nl.Name)
+				return
+			}
+
+			for _, pod := range podList.Items {
+				if pod.Spec.Containers[0].Image != nl.Spec.Image {
+					klog.Infof("Spec and status image does not match for nsqlookupd %s/%s. Pod: %v. "+
+						"Spec image: %v, new image: %v",
+						nl.Namespace, nl.Name, pod.Name, pod.Spec.Containers[0].Image, nl.Spec.Image)
+					return
+				}
+			}
+
+			cancel()
+		}, 8*time.Second)
 	}
 
 	// Finally, we update the status block of the NsqLookupd resource to reflect the
@@ -445,12 +518,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		return err
 	}
 
-	newNL, err := nlc.nsqClientSet.NsqV1alpha1().NsqLookupds(nl.Namespace).Get(nl.Name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	// Try to update the nsqadmin/nsqd configmap only if nsqlookupd is stable, i.e., when the status matches the spec
-	if *newNL.Spec.Replicas == newNL.Status.AvailableReplicas {
+	if nsqLookupdInstancesChanged {
 		klog.Infof("Nsqlookupd %s/%s instances change. Update nsqadmin and nsqd configmap", nl.Namespace, nl.Name)
 		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
 		selector, err := metav1.LabelSelectorAsSelector(labelSelector)

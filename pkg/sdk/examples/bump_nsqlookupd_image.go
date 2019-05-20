@@ -28,31 +28,31 @@ import (
 func main() {
 	var name string
 	var namespace string
-	var replicas int32
+	var image string
 
 	common.RegisterFlags()
 
 	pflag.StringVar(&name, "name", "solo", "Cluster name")
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
-	pflag.Int32Var(&replicas, "replicas", 2, "Replicas")
+	pflag.StringVar(&image, "image", "", "New image")
 
 	common.Parse()
 
-	_, nsqClient, err := common.InitClients()
+	kubeClient, nsqClient, err := common.InitClients()
 	if err != nil {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	nlsr := types.NewNsqLookupdScaleRequest(name, namespace, replicas)
+	nluir := types.NewNsqLookupdUpdateImageRequest(name, namespace, image)
 
 	// Customize wait timeout
 	//wt := 180 * time.Second
-	//nlsr.SetWaitTimeout(&wt)
+	//nasr.SetWaitTimeout(&wt)
 
-	err = sdkv1alpha1.ScaleNsqLookupd(nsqClient, nlsr)
+	err = sdkv1alpha1.UpdateNsqLookupdImage(kubeClient, nsqClient, nluir)
 	if err != nil {
-		klog.Fatalf("Scale nsqlookupd %s/%s to replicas %d error: %v", nlsr.Namespace, nlsr.Name, nlsr.Replicas, err)
+		klog.Fatalf("Update nsqlookupd %s/%s to image %s error: %v", nluir.Namespace, nluir.Name, nluir.Image, err)
 	}
 
-	klog.Infof("Scale nsqlookupd %s/%s to replicas %d success", nlsr.Namespace, nlsr.Name, nlsr.Replicas)
+	klog.Infof("Update nsqlookupd %s/%s to image %s success", nluir.Namespace, nluir.Name, nluir.Image)
 }

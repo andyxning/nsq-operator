@@ -256,7 +256,7 @@ func (nac *NsqAdminController) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		nac.workqueue.Forget(obj)
-		klog.Infof("Successfully synced '%s'", key)
+		klog.V(2).Infof("Successfully synced '%s'", key)
 		return nil
 	}(obj)
 
@@ -369,8 +369,9 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 
 	// If this number of the replicas on the NsqAdmin resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
-	// should update the Deployment resource.
-	if na.Spec.Replicas != nil && *na.Spec.Replicas != *deployment.Spec.Replicas {
+	// should update the Deployment resource. If the image changes, we also should update
+	// the deployment resource.
+	if (na.Spec.Replicas != nil && *na.Spec.Replicas != *deployment.Spec.Replicas) || (na.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image) {
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of deployment before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
@@ -381,7 +382,9 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 
 			deploymentCopy := deploymentOld.DeepCopy()
 			deploymentCopy.Spec.Replicas = na.Spec.Replicas
-			klog.Infof("NsqAdmin %s/%s replicas: %d, deployment replicas: %d", namespace, name, *na.Spec.Replicas, *deployment.Spec.Replicas)
+			deploymentCopy.Spec.Template.Spec.Containers[0].Image = na.Spec.Image
+			klog.Infof("NsqAdmin %s/%s replicas: %d, image: %v, deployment replicas: %d, image: %v", namespace, name,
+				*na.Spec.Replicas, na.Spec.Image, *deployment.Spec.Replicas, deployment.Spec.Template.Spec.Containers[0].Image)
 			_, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
 			return err
 		})

@@ -257,7 +257,7 @@ func (ndc *NsqdController) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		ndc.workqueue.Forget(obj)
-		klog.Infof("Successfully synced '%s'", key)
+		klog.V(2).Infof("Successfully synced '%s'", key)
 		return nil
 	}(obj)
 
@@ -378,8 +378,9 @@ func (ndc *NsqdController) syncHandler(key string) error {
 
 	// If this number of the replicas on the Nsqd resource is specified, and the
 	// number does not equal the current desired replicas on the StatefulSet, we
-	// should update the StatefulSet resource.
-	if nd.Spec.Replicas != nil && *nd.Spec.Replicas != *statefulSet.Spec.Replicas {
+	// should update the StatefulSet resource. If the image changes, we also should update
+	// the deployment resource.
+	if (nd.Spec.Replicas != nil && *nd.Spec.Replicas != *statefulSet.Spec.Replicas) || (nd.Spec.Image != statefulSet.Spec.Template.Spec.Containers[0].Image) {
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of statefulset before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
@@ -390,7 +391,9 @@ func (ndc *NsqdController) syncHandler(key string) error {
 
 			statefulSetCopy := statefulSetOld.DeepCopy()
 			statefulSetCopy.Spec.Replicas = nd.Spec.Replicas
-			klog.Infof("Nsqd %s/%s replicas: %d, statefulset replicas: %d", namespace, name, *nd.Spec.Replicas, *statefulSet.Spec.Replicas)
+			statefulSetCopy.Spec.Template.Spec.Containers[0].Image = nd.Spec.Image
+			klog.Infof("Nsqd %s/%s replicas: %d, image: %v, statefulset replicas: %d, image: %v", namespace, name,
+				*nd.Spec.Replicas, nd.Spec.Image, *statefulSet.Spec.Replicas, statefulSet.Spec.Template.Spec.Containers[0].Image)
 			_, err = ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Update(statefulSetCopy)
 			return err
 		})

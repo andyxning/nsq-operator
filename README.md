@@ -25,7 +25,9 @@ There is a [sdk](pkg/sdk/v1alpha1) which can be used to CRUD nsq related resourc
 | [scale_nsqd.go](pkg/sdk/examples/scale_nsqd.go) | Scale a NSQ cluster's nsqd resource object
 | [add_channel.go](pkg/sdk/examples/add_channel.go) | Add a channel, i.e., adjust nsqd resource object's memory resource limits/requests
 | [delete_channel.go](pkg/sdk/examples/delete_channel.go) | Delete a channel, i.e., adjust nsqd resource object's memory resource limits/requests
- 
+| [bump_nsqadmin_image.go](pkg/sdk/examples/bump_nsqadmin_image.go) | Update a NSQ cluster's nsqadmin image
+| [bump_nsqlookupd_image.go](pkg/sdk/examples/bump_nsqlookupd_image.go) | Update a NSQ cluster's nsqlookupd image
+| [bump_nsqd_image.go](pkg/sdk/examples/bump_nsqd_image.go) | Update a NSQ cluster's nsqd image
  
 # FAQ
 See [FAQ](FAQ.md)
