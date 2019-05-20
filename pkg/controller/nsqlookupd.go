@@ -373,7 +373,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		//
 		// If no error occurs, just return to give kubernetes some time to make
 		// adjustment according to the new spec.
-		if err != nil {
+		if err == nil {
 			klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deployment.Name, deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 		}
 
@@ -408,6 +408,18 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 				}
 			}
 
+			nsqLookupdDep, err := nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Get(common.NsqAdminDeploymentName(nl.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqlookupd %s/%s deployment", nl.Namespace, nl.Name)
+				return
+			}
+
+			if !(nsqLookupdDep.Status.ReadyReplicas == *nsqLookupdDep.Spec.Replicas && nsqLookupdDep.Status.Replicas == nsqLookupdDep.Status.ReadyReplicas) {
+				klog.Errorf("Waiting for nsqlookupd %s/%s pods ready", nl.Namespace, nl.Name)
+				return
+			}
+
+			klog.Infof("NsqLookupd %s/%s configmap change rolling update success", nl.Namespace, nl.Name)
 			cancel()
 		}, constant.NsqLookupdStatusCheckPeriod)
 	}
@@ -443,6 +455,17 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			nsqLookupdDep, err := nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Get(common.NsqAdminDeploymentName(nl.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqlookupd %s/%s deployment", nl.Namespace, nl.Name)
+				return
+			}
+
+			if !(nsqLookupdDep.Status.ReadyReplicas == *nsqLookupdDep.Spec.Replicas && nsqLookupdDep.Status.Replicas == nsqLookupdDep.Status.ReadyReplicas) {
+				klog.Errorf("Waiting for nsqlookupd %s/%s pods ready", nl.Namespace, nl.Name)
+				return
+			}
+
 			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
 			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
 			if err != nil {
@@ -459,11 +482,6 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 				return
 			}
 
-			if int32(len(podList.Items)) != *deployment.Spec.Replicas {
-				klog.Infof("Scaling nsqlookupd %s/%s deployment", nl.Namespace, nl.Name)
-				return
-			}
-
 			for _, pod := range podList.Items {
 				if pod.Spec.Containers[0].Image != nl.Spec.Image {
 					klog.Infof("Spec and status image does not match for nsqlookupd %s/%s. Pod: %v. "+
@@ -473,6 +491,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 				}
 			}
 
+			klog.Infof("NsqLookupd %s/%s reaches its replicas or image", nl.Namespace, nl.Name)
 			cancel()
 		}, constant.NsqLookupdStatusCheckPeriod)
 	}
@@ -617,7 +636,7 @@ func (nlc *NsqLookupdController) updateNsqLookupdStatus(nl *nsqv1alpha1.NsqLooku
 		// You can use DeepCopy() to make a deep copy of original object and modify this copy
 		// Or create a copy manually for better performance
 		nlCopy := nlOld.DeepCopy()
-		nlCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+		nlCopy.Status.AvailableReplicas = *nlOld.Spec.Replicas
 		// If the CustomResourceSubresources feature gate is not enabled,
 		// we must use Update instead of UpdateStatus to update the Status block of the NsqLookupd resource.
 		// UpdateStatus will not allow changes to the Spec of the resource,

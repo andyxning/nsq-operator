@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -373,7 +374,51 @@ func (ndc *NsqdController) syncHandler(key string) error {
 		if err == nil {
 			klog.V(6).Infof("New statefulset %v annotation under configmap change: %v", statefulSet.Name, statefulSetNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 		}
-		return err
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqdStatefulSetName(nd.Name)}}
+			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				klog.Errorf("Failed to generate label selector for nsqd %s/%s: %v", nd.Namespace, nd.Name, err)
+				return
+			}
+
+			podList, err := ndc.kubeClientSet.CoreV1().Pods(nd.Namespace).List(metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+
+			if err != nil {
+				klog.Errorf("Failed to list nsqd %s/%s pods: %v", nd.Namespace, nd.Name, err)
+				return
+			}
+
+			for _, pod := range podList.Items {
+				if val, exists := pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey]; exists && val != configmapHash {
+					klog.Infof("Spec and status signature annotation do not match for nsqd %s/%s. Pod: %v. "+
+						"Spec signature annotation: %v, new signature annotation: %v",
+						nd.Namespace, nd.Name, pod.Name, pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey], configmapHash)
+					return
+				}
+			}
+
+			nsqdSs, err := ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Get(common.NsqdStatefulSetName(nd.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqd %s/%s statefulset", nd.Namespace, nd.Name)
+				return
+			}
+
+			if nsqdSs.Status.ReadyReplicas != *nsqdSs.Spec.Replicas {
+				klog.Errorf("Waiting for nsqd %s/%s pods ready", nd.Namespace, nd.Name)
+				return
+			}
+
+			klog.Infof("Nsqd %s/%s configmap change rolling update success", nd.Namespace, nd.Name)
+			cancel()
+		}, constant.NsqdStatusCheckPeriod)
 	}
 
 	// If this number of the replicas on the Nsqd resource is specified, and the
@@ -397,13 +442,56 @@ func (ndc *NsqdController) syncHandler(key string) error {
 			_, err = ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Update(statefulSetCopy)
 			return err
 		})
-	}
 
-	// If an error occurs during Update, we'll requeue the item so we can
-	// attempt processing again later. This could have been caused by a
-	// temporary network failure, or any other transient reason.
-	if err != nil {
-		return err
+		// If an error occurs during Update, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			nsqdSs, err := ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Get(common.NsqdStatefulSetName(nd.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqd %s/%s statefulset", nd.Namespace, nd.Name)
+				return
+			}
+
+			if nsqdSs.Status.ReadyReplicas != *nsqdSs.Spec.Replicas {
+				klog.Errorf("Waiting for nsqd %s/%s pods ready", nd.Namespace, nd.Name)
+				return
+			}
+
+			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqdStatefulSetName(nd.Name)}}
+			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				klog.Errorf("Failed to generate label selector for nsqd %s/%s: %v", nd.Namespace, nd.Name, err)
+				return
+			}
+
+			podList, err := ndc.kubeClientSet.CoreV1().Pods(nd.Namespace).List(metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+
+			if err != nil {
+				klog.Errorf("Failed to list nsqd %s/%s pods: %v", nd.Namespace, nd.Name, err)
+				return
+			}
+
+			for _, pod := range podList.Items {
+				if pod.Spec.Containers[0].Image != nd.Spec.Image {
+					klog.Infof("Spec and status image does not match for nsqd %s/%s. Pod: %v. "+
+						"Spec image: %v, new image: %v",
+						nd.Namespace, nd.Name, pod.Name, pod.Spec.Containers[0].Image, nd.Spec.Image)
+					return
+				}
+			}
+
+			klog.Infof("Nsqd %s/%s reaches its replicas or image", nd.Namespace, nd.Name)
+			cancel()
+		}, constant.NsqdStatusCheckPeriod)
+
 	}
 
 	// Finally, we update the status block of the Nsqd resource to reflect the
@@ -428,7 +516,7 @@ func (ndc *NsqdController) updateNsqdStatus(nd *nsqv1alpha1.Nsqd, statefulSet *a
 		// You can use DeepCopy() to make a deep copy of original object and modify this copy
 		// Or create a copy manually for better performance
 		ndCopy := ndOld.DeepCopy()
-		ndCopy.Status.AvailableReplicas = statefulSet.Status.ReadyReplicas
+		ndCopy.Status.AvailableReplicas = *nd.Spec.Replicas
 		// If the CustomResourceSubresources feature gate is not enabled,
 		// we must use Update instead of UpdateStatus to update the Status block of the NsqAdmin resource.
 		// UpdateStatus will not allow changes to the Spec of the resource,

@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -364,7 +365,52 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 		if err == nil {
 			klog.V(6).Infof("New deployment %v annotation under configmap change: %v", deployment.Name, deploymentNew.Spec.Template.Annotations[constant.NsqConfigMapAnnotationKey])
 		}
-		return err
+
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqAdminDeploymentName(na.Name)}}
+			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				klog.Errorf("Failed to generate label selector for nsqadmin %s/%s: %v", na.Namespace, na.Name, err)
+				return
+			}
+
+			podList, err := nac.kubeClientSet.CoreV1().Pods(na.Namespace).List(metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+
+			if err != nil {
+				klog.Errorf("Failed to list nsqadmin %s/%s pods: %v", na.Namespace, na.Name, err)
+				return
+			}
+
+			for _, pod := range podList.Items {
+				if val, exists := pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey]; exists && val != configmapHash {
+					klog.Infof("Spec and status signature annotation do not match for nsqadmind %s/%s. Pod: %v. "+
+						"Spec signature annotation: %v, new signature annotation: %v",
+						na.Namespace, na.Name, pod.Name, pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey], configmapHash)
+					return
+				}
+			}
+
+			nsqAdminDep, err := nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Get(common.NsqAdminDeploymentName(na.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqadmin %s/%s deployment", na.Namespace, na.Name)
+				return
+			}
+
+			if !(nsqAdminDep.Status.ReadyReplicas == *nsqAdminDep.Spec.Replicas && nsqAdminDep.Status.Replicas == nsqAdminDep.Status.ReadyReplicas) {
+				klog.Errorf("Waiting for nsqadmin %s/%s pods ready", na.Namespace, na.Name)
+				return
+			}
+
+			klog.Infof("Nsqadmin %s/%s configmap change rolling update success", na.Namespace, na.Name)
+			cancel()
+		}, constant.NsqLookupdStatusCheckPeriod)
 	}
 
 	// If this number of the replicas on the NsqAdmin resource is specified, and the
@@ -388,15 +434,56 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 			_, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
 			return err
 		})
-	}
 
-	// If an error occurs during Update, we'll requeue the item so we can
-	// attempt processing again later. This could have been caused by a
-	// temporary network failure, or any other transient reason.
-	if err != nil {
-		return err
-	}
+		// If an error occurs during Update, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
 
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			nsqAdminDep, err := nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Get(common.NsqAdminDeploymentName(na.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqadmin %s/%s deployment", na.Namespace, na.Name)
+				return
+			}
+
+			if !(nsqAdminDep.Status.ReadyReplicas == *nsqAdminDep.Spec.Replicas && nsqAdminDep.Status.Replicas == nsqAdminDep.Status.ReadyReplicas) {
+				klog.Errorf("Waiting for nsqadmin %s/%s pods ready", na.Namespace, na.Name)
+				return
+			}
+
+			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqAdminDeploymentName(na.Name)}}
+			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				klog.Errorf("Failed to generate label selector for nsqadmin %s/%s: %v", na.Namespace, na.Name, err)
+				return
+			}
+
+			podList, err := nac.kubeClientSet.CoreV1().Pods(na.Namespace).List(metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+
+			if err != nil {
+				klog.Errorf("Failed to list nsqadmin %s/%s pods: %v", na.Namespace, na.Name, err)
+				return
+			}
+
+			for _, pod := range podList.Items {
+				if pod.Spec.Containers[0].Image != na.Spec.Image {
+					klog.Infof("Spec and status image does not match for nsqadmin %s/%s. Pod: %v. "+
+						"Spec image: %v, new image: %v",
+						na.Namespace, na.Name, pod.Name, pod.Spec.Containers[0].Image, na.Spec.Image)
+					return
+				}
+			}
+
+			klog.Infof("Nsqadmin %s/%s reaches its replicas or image", na.Namespace, na.Name)
+			cancel()
+		}, constant.NsqAdminStatusCheckPeriod)
+	}
 	// Finally, we update the status block of the NsqAdmin resource to reflect the
 	// current state of the world
 	err = nac.updateNsqAdminStatus(na, deployment)
@@ -419,7 +506,7 @@ func (nac *NsqAdminController) updateNsqAdminStatus(na *nsqv1alpha1.NsqAdmin, de
 		// You can use DeepCopy() to make a deep copy of original object and modify this copy
 		// Or create a copy manually for better performance
 		naCopy := naOld.DeepCopy()
-		naCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+		naCopy.Status.AvailableReplicas = *na.Spec.Replicas
 		// If the CustomResourceSubresources feature gate is not enabled,
 		// we must use Update instead of UpdateStatus to update the Status block of the NsqAdmin resource.
 		// UpdateStatus will not allow changes to the Spec of the resource,
