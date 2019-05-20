@@ -645,5 +645,230 @@ func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdScaleRequest) err
 	return nil
 }
 
-func AddNsqdChannel(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clientset, request *types.NsqdAddChannelRequest) {
+func UpdateNsqAdminImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clientset, nauir *types.NsqAdminUpdateImageRequest) error {
+	klog.Infof("Set nsqadmin %s/%s image to %s", nauir.Namespace, nauir.Name, nauir.Image)
+	ctx, cancel := context.WithTimeout(context.Background(), *nauir.WaitTimeout)
+
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		nsqAdmin, err := nsqClient.NsqV1alpha1().NsqAdmins(nauir.Namespace).Get(nauir.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Warningf("Get nsqadmin %s/%s error: %v", nauir.Namespace, nauir.Name, err)
+			return
+		}
+
+		nsqAdminCopy := nsqAdmin.DeepCopy()
+		nsqAdminCopy.Spec.Image = nauir.Image
+		_, err = nsqClient.NsqV1alpha1().NsqAdmins(nauir.Namespace).Update(nsqAdminCopy)
+		if err != nil {
+			klog.Errorf("Update nsqadmin %s/%s error: %v", nauir.Namespace, nauir.Name, err)
+			return
+		}
+
+		cancel()
+	}, 1*time.Second)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for setting nsqadmin %s/%s image", nauir.Namespace, nauir.Name)
+		return ctx.Err()
+	}
+
+	klog.Infof("Waiting for nsqadmin %s/%s image to %s", nauir.Namespace, nauir.Name, nauir.Image)
+	ctx, cancel = context.WithTimeout(context.Background(), *nauir.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": pkgcommon.NsqAdminDeploymentName(nauir.Name)}}
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			klog.Errorf("Failed to generate label selector for nsqadmin %s/%s: %v", nauir.Namespace, nauir.Name, err)
+			return
+		}
+
+		podList, err := kubeClient.CoreV1().Pods(nauir.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+
+		if err != nil {
+			klog.Errorf("Failed to list nsqadmin %s/%s pods: %v", nauir.Namespace, nauir.Name, err)
+			return
+		}
+
+		for _, pod := range podList.Items {
+			if pod.Spec.Containers[0].Image != nauir.Image {
+				klog.Infof("Spec and status image do not match for nsqadmin %s/%s. Pod: %v. Spec image: %v, new image: %v",
+					nauir.Namespace, nauir.Name, pod.Name, pod.Spec.Containers[0].Image, nauir.Image)
+				return
+			}
+		}
+
+		nsqAdminDep, err := kubeClient.AppsV1().Deployments(nauir.Namespace).Get(pkgcommon.NsqAdminDeploymentName(nauir.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("Failed to get nsqadmin %s/%s deployment", nauir.Namespace, nauir.Name)
+			return
+		}
+
+		if !(nsqAdminDep.Status.ReadyReplicas == *nsqAdminDep.Spec.Replicas && nsqAdminDep.Status.Replicas == nsqAdminDep.Status.ReadyReplicas) {
+			klog.Errorf("Waiting for nsqlookupd %s/%s pods ready", nauir.Namespace, nauir.Name)
+			return
+		}
+
+		cancel()
+	}, 8*time.Second)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for waiting nsqadmin %s/%s reach image %s", nauir.Namespace, nauir.Name, nauir.Image)
+		return ctx.Err()
+	}
+
+	return nil
+}
+
+func UpdateNsqLookupdImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clientset, nluir *types.NsqLookupdUpdateImageRequest) error {
+	klog.Infof("Set nsqlookupd %s/%s image to %s", nluir.Namespace, nluir.Name, nluir.Image)
+	ctx, cancel := context.WithTimeout(context.Background(), *nluir.WaitTimeout)
+
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		nsqLookupd, err := nsqClient.NsqV1alpha1().NsqLookupds(nluir.Namespace).Get(nluir.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Warningf("Get nsqlookupd %s/%s error: %v", nluir.Namespace, nluir.Name, err)
+			return
+		}
+
+		nsqLookupdCopy := nsqLookupd.DeepCopy()
+		nsqLookupdCopy.Spec.Image = nluir.Image
+		_, err = nsqClient.NsqV1alpha1().NsqLookupds(nluir.Namespace).Update(nsqLookupdCopy)
+		if err != nil {
+			klog.Errorf("Update nsqlookupd %s/%s error: %v", nluir.Namespace, nluir.Name, err)
+			return
+		}
+
+		cancel()
+	}, 1*time.Second)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for setting nsqlookupd %s/%s image", nluir.Namespace, nluir.Name)
+		return ctx.Err()
+	}
+
+	klog.Infof("Waiting for nsqlookupd %s/%s image to %s", nluir.Namespace, nluir.Name, nluir.Image)
+	ctx, cancel = context.WithTimeout(context.Background(), *nluir.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": pkgcommon.NsqLookupdDeploymentName(nluir.Name)}}
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			klog.Errorf("Failed to generate label selector for nsqlookupd %s/%s: %v", nluir.Namespace, nluir.Name, err)
+			return
+		}
+
+		podList, err := kubeClient.CoreV1().Pods(nluir.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+
+		if err != nil {
+			klog.Errorf("Failed to list nsqlookupd %s/%s pods: %v", nluir.Namespace, nluir.Name, err)
+			return
+		}
+
+		for _, pod := range podList.Items {
+			if pod.Spec.Containers[0].Image != nluir.Image {
+				klog.Infof("Spec and status image does not match for nsqlookupd %s/%s. Pod: %v. Spec image: %v, new image: %v",
+					nluir.Namespace, nluir.Name, pod.Name, pod.Spec.Containers[0].Image, nluir.Image)
+				return
+			}
+		}
+
+		nsqLookupdDep, err := kubeClient.AppsV1().Deployments(nluir.Namespace).Get(pkgcommon.NsqLookupdDeploymentName(nluir.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("Failed to get nsqlookupd %s/%s deployment", nluir.Namespace, nluir.Name)
+			return
+		}
+
+		if !(nsqLookupdDep.Status.ReadyReplicas == *nsqLookupdDep.Spec.Replicas && nsqLookupdDep.Status.Replicas == nsqLookupdDep.Status.ReadyReplicas) {
+			klog.Errorf("Waiting for nsqlookupd %s/%s pods ready", nluir.Namespace, nluir.Name)
+			return
+		}
+
+		cancel()
+	}, 8*time.Second)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for waiting nsqlookupd %s/%s reach image %s", nluir.Namespace, nluir.Name, nluir.Image)
+		return ctx.Err()
+	}
+
+	return nil
+}
+
+func UpdateNsqdImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clientset, nduir *types.NsqdUpdateImageRequest) error {
+	klog.Infof("Set nsqd %s/%s image to %s", nduir.Namespace, nduir.Name, nduir.Image)
+	ctx, cancel := context.WithTimeout(context.Background(), *nduir.WaitTimeout)
+
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		nsqd, err := nsqClient.NsqV1alpha1().Nsqds(nduir.Namespace).Get(nduir.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Warningf("Get nsqd %s/%s error: %v", nduir.Namespace, nduir.Name, err)
+			return
+		}
+
+		nsqdCopy := nsqd.DeepCopy()
+		nsqdCopy.Spec.Image = nduir.Image
+		_, err = nsqClient.NsqV1alpha1().Nsqds(nduir.Namespace).Update(nsqdCopy)
+		if err != nil {
+			klog.Errorf("Update nsqd %s/%s error: %v", nduir.Namespace, nduir.Name, err)
+			return
+		}
+
+		cancel()
+	}, 1*time.Second)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for setting nsqd %s/%s image", nduir.Namespace, nduir.Name)
+		return ctx.Err()
+	}
+
+	klog.Infof("Waiting for nsqd %s/%s image to %s", nduir.Namespace, nduir.Name, nduir.Image)
+	ctx, cancel = context.WithTimeout(context.Background(), *nduir.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": pkgcommon.NsqdStatefulSetName(nduir.Name)}}
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			klog.Errorf("Failed to generate label selector for nsqd %s/%s: %v", nduir.Namespace, nduir.Name, err)
+			return
+		}
+
+		podList, err := kubeClient.CoreV1().Pods(nduir.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+
+		if err != nil {
+			klog.Errorf("Failed to list nsqd %s/%s pods: %v", nduir.Namespace, nduir.Name, err)
+			return
+		}
+
+		for _, pod := range podList.Items {
+			if pod.Spec.Containers[0].Image != nduir.Image {
+				klog.Infof("Spec and status image does not match for nsqd %s/%s. Pod: %v. Spec image: %v, new image: %v",
+					nduir.Namespace, nduir.Name, pod.Name, pod.Spec.Containers[0].Image, nduir.Image)
+				return
+			}
+		}
+
+		nsqdSs, err := kubeClient.AppsV1().StatefulSets(nduir.Namespace).Get(pkgcommon.NsqdStatefulSetName(nduir.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("Failed to get nsqd %s/%s statefulset", nduir.Namespace, nduir.Name)
+			return
+		}
+
+		if nsqdSs.Status.ReadyReplicas != *nsqdSs.Spec.Replicas {
+			klog.Errorf("Waiting for nsqd %s/%s pods ready", nduir.Namespace, nduir.Name)
+			return
+		}
+
+		cancel()
+	}, 8*time.Second)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for waiting nsqd %s/%s reach image %s", nduir.Namespace, nduir.Name, nduir.Image)
+		return ctx.Err()
+	}
+
+	return nil
 }

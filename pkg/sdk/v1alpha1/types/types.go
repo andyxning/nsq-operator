@@ -249,3 +249,69 @@ func NewNsqdDeleteChannelRequest(name string, namespace string) *NsqdDeleteChann
 func (nddc *NsqdDeleteChannelRequest) SetWaitTimeout(wt *time.Duration) {
 	nddc.WaitTimeout = wt
 }
+
+type NsqAdminUpdateImageRequest struct {
+	Name      string
+	Namespace string
+	Image     string
+
+	WaitTimeout *time.Duration
+}
+
+func NewNsqAdminUpdateImageRequest(name string, namespace string, image string) *NsqAdminUpdateImageRequest {
+	return &NsqAdminUpdateImageRequest{
+		Name:      name,
+		Namespace: namespace,
+		Image:     image,
+
+		WaitTimeout: &waitTimeout,
+	}
+}
+
+func (nauir *NsqAdminUpdateImageRequest) SetWaitTimeout(wt *time.Duration) {
+	nauir.WaitTimeout = wt
+}
+
+type NsqLookupdUpdateImageRequest struct {
+	Name      string
+	Namespace string
+	Image     string
+
+	WaitTimeout *time.Duration
+}
+
+func NewNsqLookupdUpdateImageRequest(name string, namespace string, image string) *NsqLookupdUpdateImageRequest {
+	return &NsqLookupdUpdateImageRequest{
+		Name:      name,
+		Namespace: namespace,
+		Image:     image,
+
+		WaitTimeout: &waitTimeout,
+	}
+}
+
+func (nluir *NsqLookupdUpdateImageRequest) SetWaitTimeout(wt *time.Duration) {
+	nluir.WaitTimeout = wt
+}
+
+type NsqdUpdateImageRequest struct {
+	Name      string
+	Namespace string
+	Image     string
+
+	WaitTimeout *time.Duration
+}
+
+func NewNsqdUpdateImageRequest(name string, namespace string, image string) *NsqdUpdateImageRequest {
+	return &NsqdUpdateImageRequest{
+		Name:      name,
+		Namespace: namespace,
+		Image:     image,
+
+		WaitTimeout: &waitTimeout,
+	}
+}
+
+func (nduir *NsqdUpdateImageRequest) SetWaitTimeout(wt *time.Duration) {
+	nduir.WaitTimeout = wt
+}
