@@ -522,7 +522,7 @@ func ScaleNsqAdmin(nsqClient *versioned.Clientset, nasr *types.NsqAdminScaleRequ
 		}
 
 		if nsqAdmin.Status.AvailableReplicas != nasr.Replicas {
-			klog.V(2).Infof("Spec and status replicas do not match for nsqadmin %s/%s. Old replicas: %v, New replicas: %v",
+			klog.V(2).Infof("Spec and status replicas does not match for nsqadmin %s/%s. Old replicas: %v, New replicas: %v",
 				nasr.Namespace, nasr.Name, nsqAdmin.Status.AvailableReplicas, nasr.Replicas)
 			return
 		}
@@ -575,7 +575,7 @@ func ScaleNsqLookupd(nsqClient *versioned.Clientset, nlsr *types.NsqLookupdScale
 		}
 
 		if nsqLookupd.Status.AvailableReplicas != nlsr.Replicas {
-			klog.V(2).Infof("Spec and status replicas do not match for nsqlookupd %s/%s. Old replicas: %v, New replicas: %v",
+			klog.V(2).Infof("Spec and status replicas does not match for nsqlookupd %s/%s. Old replicas: %v, New replicas: %v",
 				nlsr.Namespace, nlsr.Name, nsqLookupd.Status.AvailableReplicas, nlsr.Replicas)
 			return
 		}
@@ -628,7 +628,7 @@ func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdScaleRequest) err
 		}
 
 		if nsqd.Status.AvailableReplicas != ndsr.Replicas {
-			klog.V(2).Infof("Spec and status replicas do not match for nsqd %s/%s. Old replicas: %v, New replicas: %v",
+			klog.V(2).Infof("Spec and status replicas does not match for nsqd %s/%s. Old replicas: %v, New replicas: %v",
 				ndsr.Namespace, ndsr.Name, nsqd.Status.AvailableReplicas, ndsr.Replicas)
 			return
 		}
@@ -692,7 +692,7 @@ func UpdateNsqAdminImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.
 
 		for _, pod := range podList.Items {
 			if pod.Spec.Containers[0].Image != nauir.Image {
-				klog.Infof("Spec and status image do not match for nsqadmin %s/%s. Pod: %v. Spec image: %v, new image: %v",
+				klog.Infof("Spec and status image does not match for nsqadmin %s/%s. Pod: %v. Spec image: %v, new image: %v",
 					nauir.Namespace, nauir.Name, pod.Name, pod.Spec.Containers[0].Image, nauir.Image)
 				return
 			}
@@ -705,7 +705,7 @@ func UpdateNsqAdminImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.
 		}
 
 		if !(nsqAdminDep.Status.ReadyReplicas == *nsqAdminDep.Spec.Replicas && nsqAdminDep.Status.Replicas == nsqAdminDep.Status.ReadyReplicas) {
-			klog.Errorf("Waiting for nsqlookupd %s/%s pods ready", nauir.Namespace, nauir.Name)
+			klog.Errorf("Waiting for nsqadmin %s/%s pods ready", nauir.Namespace, nauir.Name)
 			return
 		}
 
