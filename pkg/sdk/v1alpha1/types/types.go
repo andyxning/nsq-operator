@@ -45,6 +45,8 @@ type NsqCreateRequest struct {
 	NsqdCommandStatsdInterval         *time.Duration
 	NsqdCommandSnappy                 *bool
 	NsqdCommandMaxRequeueTimeout      *time.Duration
+	NsqdCommandMsgTimeout             *time.Duration
+	NsqdCommandMaxHeartbeatInterval   *time.Duration
 
 	WaitTimeout *time.Duration
 }
@@ -113,6 +115,14 @@ func (nr *NsqCreateRequest) ApplyDefaults() {
 
 	if nr.NsqdCommandMaxRequeueTimeout == nil {
 		nr.NsqdCommandMaxRequeueTimeout = &nsqdCommandMaxRequeueTimeout
+	}
+
+	if nr.NsqdCommandMsgTimeout == nil {
+		nr.NsqdCommandMsgTimeout = &nsqdCommandMsgTimeout
+	}
+
+	if nr.NsqdCommandMaxHeartbeatInterval == nil {
+		nr.NsqdCommandMaxHeartbeatInterval = &nsqdCommandMaxHeartbeatInterval
 	}
 
 	if nr.NsqdMemoryOverSalePercent == nil {

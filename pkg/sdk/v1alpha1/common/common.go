@@ -64,12 +64,15 @@ func assembleNsqdCommandArguments(nr *types.NsqCreateRequest) string {
 		"-mem-queue-size=%v "+
 		"-max-msg-size=%v "+
 		"-max-body-size=%v "+
+		"-max-heartbeat-interval=%v "+
+		"-msg-timeout=%v "+
 		"-sync-every=%v "+
 		"-sync-timeout=%v "+
 		"-data-path=%v", *nr.NsqdCommandStatsdInterval, *nr.NsqdCommandStatsdMemStats, nr.Name, nr.Name,
 		constant.NsqdHttpPort, constant.NsqdTcpPort,
 		*nr.NsqdCommandMaxRequeueTimeout, *nr.TopicMemoryQueueSize, *nr.NsqdCommandMaxMsgSize,
-		*nr.NsqdCommandMaxBodySize, *nr.NsqdCommandSyncEvery, *nr.NsqdCommandSyncTimeout, *nr.NsqdCommandDataPath)
+		*nr.NsqdCommandMaxBodySize, *nr.NsqdCommandMaxHeartbeatInterval, *nr.NsqdCommandMsgTimeout,
+		*nr.NsqdCommandSyncEvery, *nr.NsqdCommandSyncTimeout, *nr.NsqdCommandDataPath)
 }
 
 func AssembleNsqLookupd(nr *types.NsqCreateRequest) *v1alpha1.NsqLookupd {

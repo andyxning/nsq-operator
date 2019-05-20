@@ -25,16 +25,18 @@ var (
 	channelMemoryQueueSize = 10000
 
 	nsqdCommandDataPath               = "/data"
-	nsqdCommandMaxBodySize            = 5242880
+	nsqdCommandMaxBodySize            = 5242880 // 5M
 	nsqdCommandMaxChannelConsumers    = 1024
-	nsqdCommandMaxMsgSize             = 1048576
-	nsqdCommandMaxOutputBufferTimeout = time.Second
+	nsqdCommandMaxMsgSize             = 1048576 // 1M
+	nsqdCommandMaxOutputBufferTimeout = 250 * time.Millisecond
 	nsqdCommandSyncEvery              = 2500
 	nsqdCommandSyncTimeout            = 2 * time.Second
 	nsqdCommandStatsdMemStats         = true
 	nsqdCommandStatsdInterval         = 30 * time.Second
 	nsqdCommandSnappy                 = true
 	nsqdCommandMaxRequeueTimeout      = time.Hour
+	nsqdCommandMsgTimeout             = time.Minute
+	nsqdCommandMaxHeartbeatInterval   = time.Minute
 
 	waitTimeout = 900 * time.Second
 )
