@@ -409,7 +409,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 			}
 
 			cancel()
-		}, 8*time.Second)
+		}, constant.NsqLookupdStatusCheckPeriod)
 	}
 
 	// If this number of the replicas on the NsqLookupd resource is specified, and the
@@ -474,7 +474,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 			}
 
 			cancel()
-		}, 8*time.Second)
+		}, constant.NsqLookupdStatusCheckPeriod)
 	}
 
 	// Finally, we update the status block of the NsqLookupd resource to reflect the

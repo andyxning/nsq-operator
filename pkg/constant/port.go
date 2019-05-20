@@ -17,18 +17,9 @@ limitations under the License.
 package constant
 
 const (
-	// Controller name
-	NsqdControllerName       = "nsqd-controller"
-	NsqLookupdControllerName = "nsqlookupd-controller"
-	NsqAdminControllerName   = "nsqadmin-controller"
-
-	// Cluster environment Name
-	ClusterNameEnv = "NSQ_CLUSTER"
-
-	LogVolumeName = "log"
-
-	NsqConfigMapMountPath = "/etc/nsq"
-	NsqdDataMountPath     = "/data"
-
-	NsqConfigMapAnnotationKey = "configmap/signature"
+	NsqAdminHttpPort   = 4171
+	NsqLookupdHttpPort = 4161
+	NsqLookupdTcpPort  = 4160
+	NsqdHttpPort       = 4151
+	NsqdTcpPort        = 4150
 )
