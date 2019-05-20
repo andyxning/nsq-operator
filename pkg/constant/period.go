@@ -16,19 +16,13 @@ limitations under the License.
 
 package constant
 
+import "time"
+
 const (
-	// Controller name
-	NsqdControllerName       = "nsqd-controller"
-	NsqLookupdControllerName = "nsqlookupd-controller"
-	NsqAdminControllerName   = "nsqadmin-controller"
+	ConfigMapStatusCheckPeriod  = time.Second
+	NsqAdminStatusCheckPeriod   = 4 * time.Second
+	NsqLookupdStatusCheckPeriod = 8 * time.Second
+	NsqdStatusCheckPeriod       = 16 * time.Second
 
-	// Cluster environment Name
-	ClusterNameEnv = "NSQ_CLUSTER"
-
-	LogVolumeName = "log"
-
-	NsqConfigMapMountPath = "/etc/nsq"
-	NsqdDataMountPath     = "/data"
-
-	NsqConfigMapAnnotationKey = "configmap/signature"
+	ResourceUpdateRetryPeriod = time.Second
 )

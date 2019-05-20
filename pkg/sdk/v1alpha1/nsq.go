@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/andyxning/nsq-operator/pkg/apis/nsqio/v1alpha1"
 	pkgcommon "github.com/andyxning/nsq-operator/pkg/common"
@@ -110,7 +109,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		// Spec and status matches
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqLookupdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqlookupd resource to reach its spec")
@@ -131,7 +130,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 			// nsqadmin configmap exists
 			cancel()
 		}
-	}, time.Second)
+	}, constant.ConfigMapStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqadmin configmap to be ready")
@@ -184,7 +183,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		// Spec and status matches
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqAdminStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqadmin resource to reach its spec")
@@ -286,7 +285,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		// Spec and status matches
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqd resource to reach its spec")
@@ -328,7 +327,7 @@ func DeleteCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		cancel()
 		klog.Infof("Delete nsqlookupd %s/%s success", ndr.Namespace, ndr.Name)
-	}, 8*time.Second)
+	}, constant.NsqLookupdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Delete nsqlookupd %s/%s error: %v", ndr.Namespace, ndr.Name, ctx.Err())
@@ -366,7 +365,7 @@ func DeleteCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		cancel()
 		klog.Infof("Delete nsqadmin %s/%s success", ndr.Namespace, ndr.Name)
-	}, 8*time.Second)
+	}, constant.NsqAdminStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Delete nsqadmin %s/%s error: %v", ndr.Namespace, ndr.Name, ctx.Err())
@@ -404,7 +403,7 @@ func DeleteCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		cancel()
 		klog.Infof("Delete nsqd %s/%s success", ndr.Namespace, ndr.Name)
-	}, 8*time.Second)
+	}, constant.NsqdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Delete nsqd %s/%s error: %v", ndr.Namespace, ndr.Name, ctx.Err())
@@ -428,7 +427,7 @@ func DeleteCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		cancel()
 		klog.Infof("Delete nsqlookupd configmap %s/%s success", ndr.Namespace, pkgcommon.NsqLookupdConfigMapName(ndr.Name))
-	}, time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Delete nsqlookupd configmap %s/%s error: %v", ndr.Namespace, pkgcommon.NsqLookupdConfigMapName(ndr.Name), ctx.Err())
@@ -452,7 +451,7 @@ func DeleteCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		cancel()
 		klog.Infof("Delete nsqadmin configmap %s/%s success", ndr.Namespace, pkgcommon.NsqAdminConfigMapName(ndr.Name))
-	}, time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Delete nsqadmin configmap %s/%s error: %v", ndr.Namespace, pkgcommon.NsqAdminConfigMapName(ndr.Name), ctx.Err())
@@ -476,7 +475,7 @@ func DeleteCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 		cancel()
 		klog.Infof("Delete nsqd configmap %s/%s success", ndr.Namespace, pkgcommon.NsqdConfigMapName(ndr.Name))
-	}, time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Delete nsqd configmap %s/%s error: %v", ndr.Namespace, pkgcommon.NsqdConfigMapName(ndr.Name), ctx.Err())
@@ -506,7 +505,7 @@ func ScaleNsqAdmin(nsqClient *versioned.Clientset, nasr *types.NsqAdminScaleRequ
 		}
 
 		cancel()
-	}, 1*time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for setting nsqadmin %s/%s replicas", nasr.Namespace, nasr.Name)
@@ -529,7 +528,7 @@ func ScaleNsqAdmin(nsqClient *versioned.Clientset, nasr *types.NsqAdminScaleRequ
 		}
 
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqAdminStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqadmin %s/%s reach its replicas %d", nasr.Namespace, nasr.Name, nasr.Replicas)
@@ -559,7 +558,7 @@ func ScaleNsqLookupd(nsqClient *versioned.Clientset, nlsr *types.NsqLookupdScale
 		}
 
 		cancel()
-	}, 1*time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for setting nsqlookupd %s/%s replicas", nlsr.Namespace, nlsr.Name)
@@ -582,7 +581,7 @@ func ScaleNsqLookupd(nsqClient *versioned.Clientset, nlsr *types.NsqLookupdScale
 		}
 
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqLookupdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqlookupd %s/%s reach its replicas %d", nlsr.Namespace, nlsr.Name, nlsr.Replicas)
@@ -612,7 +611,7 @@ func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdScaleRequest) err
 		}
 
 		cancel()
-	}, 1*time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for setting nsqd %s/%s replicas", ndsr.Namespace, ndsr.Name)
@@ -635,7 +634,7 @@ func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdScaleRequest) err
 		}
 
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqd %s/%s reach its replicas %d", ndsr.Namespace, ndsr.Name, ndsr.Replicas)
@@ -665,7 +664,7 @@ func UpdateNsqAdminImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.
 		}
 
 		cancel()
-	}, 1*time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for setting nsqadmin %s/%s image", nauir.Namespace, nauir.Name)
@@ -711,7 +710,7 @@ func UpdateNsqAdminImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.
 		}
 
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqAdminStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqadmin %s/%s reach image %s", nauir.Namespace, nauir.Name, nauir.Image)
@@ -741,7 +740,7 @@ func UpdateNsqLookupdImage(kubeClient *kubernetes.Clientset, nsqClient *versione
 		}
 
 		cancel()
-	}, 1*time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for setting nsqlookupd %s/%s image", nluir.Namespace, nluir.Name)
@@ -787,7 +786,7 @@ func UpdateNsqLookupdImage(kubeClient *kubernetes.Clientset, nsqClient *versione
 		}
 
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqLookupdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqlookupd %s/%s reach image %s", nluir.Namespace, nluir.Name, nluir.Image)
@@ -817,7 +816,7 @@ func UpdateNsqdImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clie
 		}
 
 		cancel()
-	}, 1*time.Second)
+	}, constant.ResourceUpdateRetryPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for setting nsqd %s/%s image", nduir.Namespace, nduir.Name)
@@ -863,7 +862,7 @@ func UpdateNsqdImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clie
 		}
 
 		cancel()
-	}, 8*time.Second)
+	}, constant.NsqdStatusCheckPeriod)
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqd %s/%s reach image %s", nduir.Namespace, nduir.Name, nduir.Image)
