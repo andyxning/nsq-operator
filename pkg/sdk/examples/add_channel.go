@@ -28,31 +28,35 @@ import (
 func main() {
 	var name string
 	var namespace string
-	var replicas int32
+	var snappy bool
 
 	common.RegisterFlags()
 
 	pflag.StringVar(&name, "name", "solo", "Cluster name")
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
-	pflag.Int32Var(&replicas, "replicas", 2, "Replicas")
+	pflag.BoolVar(&snappy, "snappy", true, "Consumer snappy compression enabled")
+
+	messageAvgSize := 1024
 
 	common.Parse()
 
-	_, nsqClient, err := common.InitClients()
+	kubeClient, _, err := common.InitClients()
 	if err != nil {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	nlsr := types.NewNsqLookupdScaleRequest(name, namespace, replicas)
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize)
+	ndcr.ApplyDefaults()
+	ndcr.SetSnappy(snappy)
 
 	// Customize wait timeout
 	//wt := 180 * time.Second
-	//nlsr.SetWaitTimeout(&wt)
+	//ndcr.SetWaitTimeout(wt)
 
-	err = sdkv1alpha1.ScaleNsqLookupd(nsqClient, nlsr)
+	err = sdkv1alpha1.AdjustNsqdConfig(kubeClient, ndcr)
 	if err != nil {
-		klog.Fatalf("Scale nsqlookupd %s/%s to replicas %d error: %v", nlsr.Namespace, nlsr.Name, nlsr.Replicas, err)
+		klog.Fatalf("Update nsqd %s/%s config to %#v error: %v", ndcr.Namespace, ndcr.Name, ndcr.AssembleNsqdConfigMap([]string{}).Data, err)
 	}
 
-	klog.Infof("Scale nsqlookupd %s/%s to replicas %d success", nlsr.Namespace, nlsr.Name, nlsr.Replicas)
+	klog.Infof("Update nsqd %s/%s config to %#v success", ndcr.Namespace, ndcr.Name, ndcr.AssembleNsqdConfigMap([]string{}).Data)
 }

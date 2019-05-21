@@ -170,7 +170,7 @@ func NewNsqAdminController(opts *options.Options, kubeClientSet kubernetes.Inter
 			}
 			controller.handleObject(new)
 		},
-		DeleteFunc: func(obj interface{}) { klog.Infof("Delete configmap %#v", obj) },
+		DeleteFunc: controller.handleConfigMapDeletionObject,
 	})
 
 	return controller
@@ -550,7 +550,7 @@ func (nac *NsqAdminController) enqueueNsqAdmin(obj interface{}) {
 	nac.workqueue.Add(key)
 }
 
-// handleObject will take any resource implementing metav1.Object and attempt
+// handleObject will take any resource(except configmap deletion) implementing metav1.Object and attempt
 // to find the NsqAdmin resource that 'owns' it. It does this by looking at the
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that NsqAdmin resource to be processed. If the object does not
@@ -586,6 +586,36 @@ func (nac *NsqAdminController) handleObject(obj interface{}) {
 		}
 
 		nac.enqueueNsqAdmin(na)
+		return
+	}
+}
+
+// handleConfigMapDeletionObject handles configmap deletion.
+func (nac *NsqAdminController) handleConfigMapDeletionObject(obj interface{}) {
+	var object metav1.Object
+	var ok bool
+	if object, ok = obj.(metav1.Object); !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("error decoding object, invalid type"))
+			return
+		}
+		object, ok = tombstone.Obj.(metav1.Object)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
+			return
+		}
+		klog.V(4).Infof("Recovered deleted object '%s/%s' from tombstone", object.GetNamespace(), object.GetName())
+	}
+	klog.V(4).Infof("Processing object %s/%s", object.GetNamespace(), object.GetName())
+	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
+		// If this object is not owned by a NsqAdmin, we should not do anything more
+		// with it.
+		if ownerRef.Kind != nsqio.NsqAdminKind {
+			return
+		}
+
+		klog.Infof("Delete nsqadmin configmap %#v", obj)
 		return
 	}
 }
