@@ -47,7 +47,7 @@ func main() {
 
 	// Customize wait timeout
 	//wt := 180 * time.Second
-	//nasr.SetWaitTimeout(&wt)
+	//nauir.SetWaitTimeout(wt)
 
 	err = sdkv1alpha1.UpdateNsqAdminImage(kubeClient, nsqClient, nauir)
 	if err != nil {

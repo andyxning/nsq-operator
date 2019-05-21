@@ -172,7 +172,6 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 			}
 			controller.handleObject(new)
 		},
-		DeleteFunc: controller.handleObject,
 	})
 
 	return controller
@@ -333,6 +332,25 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	if err != nil {
 		klog.Errorf("Get/Create deployment for nsqlookupd %s/%s error: %v", nl.Namespace, nl.Name, err)
 		return err
+	}
+
+	if !(deployment.Status.ReadyReplicas == *deployment.Spec.Replicas && deployment.Status.Replicas == deployment.Status.ReadyReplicas) {
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			nsqLookupdDep, err := nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Get(common.NsqLookupdDeploymentName(nl.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqlookupd %s/%s deployment", nl.Namespace, nl.Name)
+				return
+			}
+
+			if !(nsqLookupdDep.Status.ReadyReplicas == *nsqLookupdDep.Spec.Replicas && nsqLookupdDep.Status.Replicas == nsqLookupdDep.Status.ReadyReplicas) {
+				klog.Infof("Waiting for nsqlookupd %s/%s pods ready", nl.Namespace, nl.Name)
+				return
+			}
+
+			klog.Infof("NsqLookupd %s/%s reaches it spec", nl.Namespace, nl.Name)
+			cancel()
+		}, constant.NsqLookupdStatusCheckPeriod)
 	}
 
 	// If the deployment is not controlled by this NsqLookupd resource, we should log
@@ -506,7 +524,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	nsqAdminConfigMapName := common.NsqAdminConfigMapName(nl.Name)
 	nsqAdminConfigMap, err := nlc.configmapsLister.ConfigMaps(nl.Namespace).Get(nsqAdminConfigMapName)
 	// If the resource doesn't exist, we'll create it
-	if errors.IsNotFound(err) && *nl.Spec.Replicas == deployment.Status.AvailableReplicas {
+	if errors.IsNotFound(err) {
 		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqLookupdDeploymentName(nl.Name)}}
 		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
 		if err != nil {
@@ -522,18 +540,22 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 		}
 
 		klog.Infof("Configmap for nsqadmin %s/%s does not exist. Create it", nl.Namespace, nl.Name)
-		nsqAdminConfigMap, err := nlc.newNsqAdminConfigMap(nl, podList)
+		nsqAdminConfigMap, err = nlc.newNsqAdminConfigMap(nl, podList)
 		if err != nil {
 			klog.Infof("Gen nsqadmin configmap %s/%s error: %v", nl.Namespace, nl.Name, err)
 			return err
 		}
 		nsqAdminConfigMap, err = nlc.kubeClientSet.CoreV1().ConfigMaps(nl.Namespace).Create(nsqAdminConfigMap)
+		if err != nil {
+			klog.Errorf("Create nsqadmin %s/%s configmap error: %v", nl.Namespace, nl.Name, err)
+			return err
+		}
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 

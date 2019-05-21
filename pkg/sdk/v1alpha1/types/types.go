@@ -17,120 +17,282 @@ limitations under the License.
 package types
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/andyxning/nsq-operator/pkg/apis/nsqio/v1alpha1"
+	"github.com/andyxning/nsq-operator/pkg/common"
+	"github.com/andyxning/nsq-operator/pkg/constant"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type NsqCreateRequest struct {
-	NsqAdminSpec   v1alpha1.NsqAdminSpec
-	NsqLookupdSpec v1alpha1.NsqLookupdSpec
-	NsqdSpec       v1alpha1.NsqdSpec
+type NsqdConfigRequest struct {
+	Name                   string
+	Namespace              string
+	MessageAvgSize         int
+	MemoryOverSalePercent  *int
+	TopicMemoryQueueSize   *int
+	ChannelMemoryQueueSize *int
 
-	Name                      string
-	Namespace                 string
-	MessageAvgSize            int
-	NsqdMemoryOverSalePercent *int
-	TopicMemoryQueueSize      *int
-	ChannelMemoryQueueSize    *int
-
-	NsqdCommandDataPath               *string
-	NsqdCommandMaxBodySize            *int
-	NsqdCommandMaxChannelConsumers    *int
-	NsqdCommandMaxMsgSize             *int
-	NsqdCommandMaxOutputBufferTimeout *time.Duration
-	NsqdCommandSyncEvery              *int
-	NsqdCommandSyncTimeout            *time.Duration
-	NsqdCommandStatsdMemStats         *bool
-	NsqdCommandStatsdInterval         *time.Duration
-	NsqdCommandSnappy                 *bool
-	NsqdCommandMaxRequeueTimeout      *time.Duration
-	NsqdCommandMsgTimeout             *time.Duration
-	NsqdCommandMaxHeartbeatInterval   *time.Duration
+	DataPath               *string
+	MaxBodySize            *int
+	MaxChannelConsumers    *int
+	MaxMsgSize             *int
+	MaxOutputBufferTimeout *time.Duration
+	SyncEvery              *int
+	SyncTimeout            *time.Duration
+	StatsdMemStats         *bool
+	StatsdInterval         *time.Duration
+	Snappy                 *bool
+	MaxRequeueTimeout      *time.Duration
+	MsgTimeout             *time.Duration
+	MaxHeartbeatInterval   *time.Duration
 
 	WaitTimeout *time.Duration
 }
 
-func NewNsqCreateRequest(name string, namespace string, messageAvgSize int,
-	nds v1alpha1.NsqdSpec, nls v1alpha1.NsqLookupdSpec, nas v1alpha1.NsqAdminSpec) *NsqCreateRequest {
-	return &NsqCreateRequest{
-		NsqdSpec:       nds,
-		NsqLookupdSpec: nls,
-		NsqAdminSpec:   nas,
-
+func NewNsqdConfigRequest(name string, namespace string, messageAvgSize int) *NsqdConfigRequest {
+	return &NsqdConfigRequest{
 		Name:           name,
 		Namespace:      namespace,
 		MessageAvgSize: messageAvgSize,
 	}
 }
 
-func (nr *NsqCreateRequest) ApplyDefaults() {
-	if nr.TopicMemoryQueueSize == nil {
-		nr.TopicMemoryQueueSize = &topicMemoryQueueSize
+func (ndcr *NsqdConfigRequest) SetMemoryOverSalePercent(memoryOverSalePercent int) {
+	ndcr.MemoryOverSalePercent = &memoryOverSalePercent
+}
+
+func (ndcr *NsqdConfigRequest) SetTopicMemoryQueueSize(topicMemoryQueueSize int) {
+	ndcr.TopicMemoryQueueSize = &topicMemoryQueueSize
+}
+
+func (ndcr *NsqdConfigRequest) SetChannelMemoryQueueSize(channelMemoryQueueSize int) {
+	ndcr.ChannelMemoryQueueSize = &channelMemoryQueueSize
+}
+
+func (ndcr *NsqdConfigRequest) SetDataPath(dataPath string) {
+	ndcr.DataPath = &dataPath
+}
+
+func (ndcr *NsqdConfigRequest) SetMaxBodySize(maxBodySize int) {
+	ndcr.MaxBodySize = &maxBodySize
+}
+
+func (ndcr *NsqdConfigRequest) SetMaxChannelConsumers(maxChannelConsumers int) {
+	ndcr.MaxChannelConsumers = &maxChannelConsumers
+}
+
+func (ndcr *NsqdConfigRequest) SetMaxMsgSize(maxMsgSize int) {
+	ndcr.MaxMsgSize = &maxMsgSize
+}
+
+func (ndcr *NsqdConfigRequest) SetMaxOutputBufferTimeout(maxOutputBufferTimeout time.Duration) {
+	ndcr.MaxOutputBufferTimeout = &maxOutputBufferTimeout
+}
+
+func (ndcr *NsqdConfigRequest) SetSyncEvery(syncEvery int) {
+	ndcr.SyncEvery = &syncEvery
+}
+
+func (ndcr *NsqdConfigRequest) SetSyncTimeout(syncTimeout time.Duration) {
+	ndcr.SyncTimeout = &syncTimeout
+}
+
+func (ndcr *NsqdConfigRequest) SetStatsdMemStats(statsdMemStats bool) {
+	ndcr.StatsdMemStats = &statsdMemStats
+}
+
+func (ndcr *NsqdConfigRequest) SetStatsdInterval(statsdInterval time.Duration) {
+	ndcr.StatsdInterval = &statsdInterval
+}
+
+func (ndcr *NsqdConfigRequest) SetSnappy(snappy bool) {
+	ndcr.Snappy = &snappy
+}
+
+func (ndcr *NsqdConfigRequest) SetMaxRequeueTimeout(maxRequeueTimeout time.Duration) {
+	ndcr.MaxRequeueTimeout = &maxRequeueTimeout
+}
+
+func (ndcr *NsqdConfigRequest) SetMsgTimeout(msgTimeout time.Duration) {
+	ndcr.MsgTimeout = &msgTimeout
+}
+
+func (ndcr *NsqdConfigRequest) SetMaxHeartbeatInterval(maxHeartbeatInterval time.Duration) {
+	ndcr.MaxHeartbeatInterval = &maxHeartbeatInterval
+}
+
+func (ndcr *NsqdConfigRequest) SetWaitTimeout(waitTimeout time.Duration) {
+	ndcr.WaitTimeout = &waitTimeout
+}
+
+func (ndcr *NsqdConfigRequest) ApplyDefaults() {
+	if ndcr.TopicMemoryQueueSize == nil {
+		ndcr.TopicMemoryQueueSize = &topicMemoryQueueSize
 	}
 
-	if nr.ChannelMemoryQueueSize == nil {
-		nr.ChannelMemoryQueueSize = &channelMemoryQueueSize
+	if ndcr.ChannelMemoryQueueSize == nil {
+		ndcr.ChannelMemoryQueueSize = &channelMemoryQueueSize
 	}
 
-	if nr.NsqdCommandDataPath == nil {
-		nr.NsqdCommandDataPath = &nsqdCommandDataPath
+	if ndcr.DataPath == nil {
+		ndcr.DataPath = &nsqdCommandDataPath
 	}
 
-	if nr.NsqdCommandMaxBodySize == nil {
-		nr.NsqdCommandMaxBodySize = &nsqdCommandMaxBodySize
+	if ndcr.MaxBodySize == nil {
+		ndcr.MaxBodySize = &nsqdCommandMaxBodySize
 	}
 
-	if nr.NsqdCommandMaxChannelConsumers == nil {
-		nr.NsqdCommandMaxChannelConsumers = &nsqdCommandMaxChannelConsumers
+	if ndcr.MaxChannelConsumers == nil {
+		ndcr.MaxChannelConsumers = &nsqdCommandMaxChannelConsumers
 	}
 
-	if nr.NsqdCommandMaxMsgSize == nil {
-		nr.NsqdCommandMaxMsgSize = &nsqdCommandMaxMsgSize
+	if ndcr.MaxMsgSize == nil {
+		ndcr.MaxMsgSize = &nsqdCommandMaxMsgSize
 	}
 
-	if nr.NsqdCommandMaxOutputBufferTimeout == nil {
-		nr.NsqdCommandMaxOutputBufferTimeout = &nsqdCommandMaxOutputBufferTimeout
+	if ndcr.MaxOutputBufferTimeout == nil {
+		ndcr.MaxOutputBufferTimeout = &nsqdCommandMaxOutputBufferTimeout
 	}
 
-	if nr.NsqdCommandSyncEvery == nil {
-		nr.NsqdCommandSyncEvery = &nsqdCommandSyncEvery
+	if ndcr.SyncEvery == nil {
+		ndcr.SyncEvery = &nsqdCommandSyncEvery
 	}
 
-	if nr.NsqdCommandSyncTimeout == nil {
-		nr.NsqdCommandSyncTimeout = &nsqdCommandSyncTimeout
+	if ndcr.SyncTimeout == nil {
+		ndcr.SyncTimeout = &nsqdCommandSyncTimeout
 	}
 
-	if nr.NsqdCommandStatsdInterval == nil {
-		nr.NsqdCommandStatsdInterval = &nsqdCommandStatsdInterval
+	if ndcr.StatsdInterval == nil {
+		ndcr.StatsdInterval = &nsqdCommandStatsdInterval
 	}
 
-	if nr.NsqdCommandStatsdMemStats == nil {
-		nr.NsqdCommandStatsdMemStats = &nsqdCommandStatsdMemStats
+	if ndcr.StatsdMemStats == nil {
+		ndcr.StatsdMemStats = &nsqdCommandStatsdMemStats
 	}
 
-	if nr.NsqdCommandSnappy == nil {
-		nr.NsqdCommandSnappy = &nsqdCommandSnappy
+	if ndcr.Snappy == nil {
+		ndcr.Snappy = &nsqdCommandSnappy
 	}
 
-	if nr.NsqdCommandMaxRequeueTimeout == nil {
-		nr.NsqdCommandMaxRequeueTimeout = &nsqdCommandMaxRequeueTimeout
+	if ndcr.MaxRequeueTimeout == nil {
+		ndcr.MaxRequeueTimeout = &nsqdCommandMaxRequeueTimeout
 	}
 
-	if nr.NsqdCommandMsgTimeout == nil {
-		nr.NsqdCommandMsgTimeout = &nsqdCommandMsgTimeout
+	if ndcr.MsgTimeout == nil {
+		ndcr.MsgTimeout = &nsqdCommandMsgTimeout
 	}
 
-	if nr.NsqdCommandMaxHeartbeatInterval == nil {
-		nr.NsqdCommandMaxHeartbeatInterval = &nsqdCommandMaxHeartbeatInterval
+	if ndcr.MaxHeartbeatInterval == nil {
+		ndcr.MaxHeartbeatInterval = &nsqdCommandMaxHeartbeatInterval
 	}
 
-	if nr.NsqdMemoryOverSalePercent == nil {
-		nr.NsqdMemoryOverSalePercent = &nsqdMemoryOverSalePercent
+	if ndcr.MemoryOverSalePercent == nil {
+		ndcr.MemoryOverSalePercent = &nsqdMemoryOverSalePercent
 	}
 
-	if nr.WaitTimeout == nil {
-		nr.WaitTimeout = &waitTimeout
+	if ndcr.WaitTimeout == nil {
+		ndcr.WaitTimeout = &waitTimeout
+	}
+}
+
+func (ndcr *NsqdConfigRequest) AssembleNsqdConfigMap(addresses []string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.NsqdConfigMapName(ndcr.Name),
+			Namespace: ndcr.Namespace,
+		},
+		Data: map[string]string{
+			"nsqd": fmt.Sprintf("%s=%q\n%s=%q\n",
+				constant.NsqdCommandArguments, ndcr.assembleNsqdCommandArguments(),
+				constant.NsqdLookupdTcpAddress, common.AssembleNsqLookupdAddresses(addresses)),
+		},
+	}
+}
+
+func (ndcr *NsqdConfigRequest) assembleNsqdCommandArguments() string {
+	return fmt.Sprintf("-statsd-interval=%v "+
+		"-statsd-mem-stats=%v "+
+		"-statsd-prefix=nsq_cluster_%s.%s "+
+		"-http-address=0.0.0.0:%v "+
+		"-tcp-address=0.0.0.0:%v "+
+		"-max-req-timeout=%v "+
+		"-mem-queue-size=%v "+
+		"-max-msg-size=%v "+
+		"-max-body-size=%v "+
+		"-max-heartbeat-interval=%v "+
+		"-msg-timeout=%v "+
+		"-snappy=%v "+
+		"-sync-every=%v "+
+		"-sync-timeout=%v "+
+		"-data-path=%v", *ndcr.StatsdInterval, *ndcr.StatsdMemStats,
+		ndcr.Name, ndcr.Name, constant.NsqdHttpPort, constant.NsqdTcpPort,
+		*ndcr.MaxRequeueTimeout, *ndcr.TopicMemoryQueueSize, *ndcr.MaxMsgSize,
+		*ndcr.MaxBodySize, *ndcr.MaxHeartbeatInterval, *ndcr.MsgTimeout, *ndcr.Snappy,
+		*ndcr.SyncEvery, *ndcr.SyncTimeout, *ndcr.DataPath)
+}
+
+type NsqCreateRequest struct {
+	NsqAdminSpec   v1alpha1.NsqAdminSpec
+	NsqLookupdSpec v1alpha1.NsqLookupdSpec
+	NsqdSpec       v1alpha1.NsqdSpec
+
+	NsqdConfig *NsqdConfigRequest
+}
+
+func NewNsqCreateRequest(nsqdConfig *NsqdConfigRequest,
+	nds v1alpha1.NsqdSpec, nls v1alpha1.NsqLookupdSpec, nas v1alpha1.NsqAdminSpec) *NsqCreateRequest {
+	return &NsqCreateRequest{
+		NsqdSpec:       nds,
+		NsqLookupdSpec: nls,
+		NsqAdminSpec:   nas,
+		NsqdConfig:     nsqdConfig,
+	}
+}
+
+func (ncr *NsqCreateRequest) AssembleNsqd() *v1alpha1.Nsqd {
+	return &v1alpha1.Nsqd{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ncr.NsqdConfig.Name,
+			Namespace: ncr.NsqdConfig.Namespace,
+		},
+		Spec: ncr.NsqdSpec,
+	}
+}
+
+func (ncr *NsqCreateRequest) AssembleNsqLookupdConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.NsqLookupdConfigMapName(ncr.NsqdConfig.Name),
+			Namespace: ncr.NsqdConfig.Namespace,
+		},
+		Data: map[string]string{
+			"nsqlookupd": fmt.Sprintf("%s=\"--http-address=0.0.0.0:%v --tcp-address=0.0.0.0:%v\n\"",
+				constant.NsqLookupdCommandArguments, constant.NsqLookupdHttpPort, constant.NsqLookupdTcpPort),
+		},
+	}
+}
+
+func (ncr *NsqCreateRequest) AssembleNsqLookupd() *v1alpha1.NsqLookupd {
+	return &v1alpha1.NsqLookupd{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ncr.NsqdConfig.Name,
+			Namespace: ncr.NsqdConfig.Namespace,
+		},
+		Spec: ncr.NsqLookupdSpec,
+	}
+}
+
+func (ncr *NsqCreateRequest) AssembleNsqAdmin() *v1alpha1.NsqAdmin {
+	return &v1alpha1.NsqAdmin{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ncr.NsqdConfig.Name,
+			Namespace: ncr.NsqdConfig.Namespace,
+		},
+		Spec: ncr.NsqAdminSpec,
 	}
 }
 
@@ -150,8 +312,8 @@ func NewNsqDeleteRequest(name string, namespace string) *NsqDeleteRequest {
 	}
 }
 
-func (ndr *NsqDeleteRequest) SetWaitTimeout(wt *time.Duration) {
-	ndr.WaitTimeout = wt
+func (ndr *NsqDeleteRequest) SetWaitTimeout(wt time.Duration) {
+	ndr.WaitTimeout = &wt
 }
 
 type NsqAdminScaleRequest struct {
@@ -172,8 +334,8 @@ func NewNsqAdminScaleRequest(name string, namespace string, replicas int32) *Nsq
 	}
 }
 
-func (nasr *NsqAdminScaleRequest) SetWaitTimeout(wt *time.Duration) {
-	nasr.WaitTimeout = wt
+func (nasr *NsqAdminScaleRequest) SetWaitTimeout(wt time.Duration) {
+	nasr.WaitTimeout = &wt
 }
 
 type NsqLookupdScaleRequest struct {
@@ -194,8 +356,8 @@ func NewNsqLookupdScaleRequest(name string, namespace string, replicas int32) *N
 	}
 }
 
-func (nlsr *NsqLookupdScaleRequest) SetWaitTimeout(wt *time.Duration) {
-	nlsr.WaitTimeout = wt
+func (nlsr *NsqLookupdScaleRequest) SetWaitTimeout(wt time.Duration) {
+	nlsr.WaitTimeout = &wt
 }
 
 type NsqdScaleRequest struct {
@@ -216,8 +378,8 @@ func NewNsqdScaleRequest(name string, namespace string, replicas int32) *NsqdSca
 	}
 }
 
-func (ndsr *NsqdScaleRequest) SetWaitTimeout(wt *time.Duration) {
-	ndsr.WaitTimeout = wt
+func (ndsr *NsqdScaleRequest) SetWaitTimeout(wt time.Duration) {
+	ndsr.WaitTimeout = &wt
 }
 
 type NsqdAddChannelRequest struct {
@@ -236,8 +398,8 @@ func NewNsqdAddChannelRequest(name string, namespace string) *NsqdAddChannelRequ
 	}
 }
 
-func (ndac *NsqdAddChannelRequest) SetWaitTimeout(wt *time.Duration) {
-	ndac.WaitTimeout = wt
+func (ndac *NsqdAddChannelRequest) SetWaitTimeout(wt time.Duration) {
+	ndac.WaitTimeout = &wt
 }
 
 type NsqdDeleteChannelRequest struct {
@@ -256,8 +418,8 @@ func NewNsqdDeleteChannelRequest(name string, namespace string) *NsqdDeleteChann
 	}
 }
 
-func (nddc *NsqdDeleteChannelRequest) SetWaitTimeout(wt *time.Duration) {
-	nddc.WaitTimeout = wt
+func (nddc *NsqdDeleteChannelRequest) SetWaitTimeout(wt time.Duration) {
+	nddc.WaitTimeout = &wt
 }
 
 type NsqAdminUpdateImageRequest struct {
@@ -278,8 +440,8 @@ func NewNsqAdminUpdateImageRequest(name string, namespace string, image string) 
 	}
 }
 
-func (nauir *NsqAdminUpdateImageRequest) SetWaitTimeout(wt *time.Duration) {
-	nauir.WaitTimeout = wt
+func (nauir *NsqAdminUpdateImageRequest) SetWaitTimeout(wt time.Duration) {
+	nauir.WaitTimeout = &wt
 }
 
 type NsqLookupdUpdateImageRequest struct {
@@ -300,8 +462,8 @@ func NewNsqLookupdUpdateImageRequest(name string, namespace string, image string
 	}
 }
 
-func (nluir *NsqLookupdUpdateImageRequest) SetWaitTimeout(wt *time.Duration) {
-	nluir.WaitTimeout = wt
+func (nluir *NsqLookupdUpdateImageRequest) SetWaitTimeout(wt time.Duration) {
+	nluir.WaitTimeout = &wt
 }
 
 type NsqdUpdateImageRequest struct {
@@ -322,6 +484,6 @@ func NewNsqdUpdateImageRequest(name string, namespace string, image string) *Nsq
 	}
 }
 
-func (nduir *NsqdUpdateImageRequest) SetWaitTimeout(wt *time.Duration) {
-	nduir.WaitTimeout = wt
+func (nduir *NsqdUpdateImageRequest) SetWaitTimeout(wt time.Duration) {
+	nduir.WaitTimeout = &wt
 }
