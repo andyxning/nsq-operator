@@ -171,6 +171,7 @@ func NewNsqdController(opts *options.Options, kubeClientSet kubernetes.Interface
 			}
 			controller.handleObject(new)
 		},
+		DeleteFunc: func(obj interface{}) { klog.Infof("Delete configmap %#v", obj) },
 	})
 
 	return controller
