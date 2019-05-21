@@ -34,15 +34,23 @@ type Nsqd struct {
 
 // NsqdSpec is the spec for a Nsqd resource
 type NsqdSpec struct {
-	Image            string `json:"image"`
-	Replicas         *int32 `json:"replicas"`
-	StorageClassName string `json:"storageClassName"`
-	LogMappingDir    string `json:"logMappingDir"`
+	Image                 string `json:"image"`
+	Replicas              int32  `json:"replicas"`
+	StorageClassName      string `json:"storageClassName"`
+	LogMappingDir         string `json:"logMappingDir"`
+	MessageAvgSize        int32  `json:"messageAvgSize"`
+	MemoryOverSalePercent int32  `json:"memoryOverSalePercent"`
+	MemoryQueueSize       int32  `json:"memoryQueueSize"`
+	ChannelCount          int32  `json:"channelCount"`
 }
 
 // NsqdStatus is the status for a Nsqd resource
 type NsqdStatus struct {
-	AvailableReplicas int32 `json:"availableReplicas"`
+	AvailableReplicas     int32 `json:"availableReplicas"`
+	MessageAvgSize        int32 `json:"messageAvgSize"`
+	MemoryOverSalePercent int32 `json:"memoryOverSalePercent"`
+	MemoryQueueSize       int32 `json:"memoryQueueSize"`
+	ChannelCount          int32 `json:"channelCount"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -70,7 +78,7 @@ type NsqLookupd struct {
 // NsqLookupdSpec is the spec for a NsqLookupd resource
 type NsqLookupdSpec struct {
 	Image         string `json:"image"`
-	Replicas      *int32 `json:"replicas"`
+	Replicas      int32  `json:"replicas"`
 	LogMappingDir string `json:"logMappingDir"`
 }
 
@@ -104,7 +112,7 @@ type NsqAdmin struct {
 // NsqAdminSpec is the spec for a NsqAdmin resource
 type NsqAdminSpec struct {
 	Image         string `json:"image"`
-	Replicas      *int32 `json:"replicas"`
+	Replicas      int32  `json:"replicas"`
 	LogMappingDir string `json:"logMappingDir"`
 }
 

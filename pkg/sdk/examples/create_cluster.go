@@ -47,31 +47,38 @@ func main() {
 	var nsqdReplicas int32 = 2
 	var nsqLookupdReplicas int32 = 2
 	var nsqAdminReplicas int32 = 2
-	messageAvgSize := 1024
+	var messageAvgSize int32 = 1024 // 1ki
+	var memoryQueueSize int32 = 10000
+	var memoryOverSalePercent int32 = 50
+	var channelCount int32 = 0
+
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
+	ndcr.ApplyDefaults()
+	// Customize nsqd config
+	//ndcr.SetMaxBodySize(1024 * 1024 * 10)
 
 	nds := v1alpha1.NsqdSpec{
-		Image:            "dockerops123/nsqd:1.1.0",
-		Replicas:         &nsqdReplicas,
-		StorageClassName: "standard",
-		LogMappingDir:    fmt.Sprintf("/var/log/%s", name),
+		Image:                 "dockerops123/nsqd:1.1.0",
+		Replicas:              nsqdReplicas,
+		StorageClassName:      "standard",
+		LogMappingDir:         fmt.Sprintf("/var/log/%s", name),
+		MessageAvgSize:        ndcr.GetMessageAvgSize(),
+		MemoryQueueSize:       ndcr.GetMemoryQueueSize(),
+		MemoryOverSalePercent: ndcr.GetMemoryOverSalePercent(),
+		ChannelCount:          ndcr.GetChannelCount(),
 	}
 
 	nls := v1alpha1.NsqLookupdSpec{
 		Image:         "dockerops123/nsqlookupd:1.1.0",
-		Replicas:      &nsqLookupdReplicas,
+		Replicas:      nsqLookupdReplicas,
 		LogMappingDir: fmt.Sprintf("/var/log/%s", name),
 	}
 
 	nas := v1alpha1.NsqAdminSpec{
 		Image:         "dockerops123/nsqadmin:1.1.0",
-		Replicas:      &nsqAdminReplicas,
+		Replicas:      nsqAdminReplicas,
 		LogMappingDir: fmt.Sprintf("/var/log/%s", name),
 	}
-
-	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize)
-	ndcr.ApplyDefaults()
-	// Customize nsqd config
-	//ndcr.SetMaxBodySize(1024 * 1024 * 10)
 
 	nr := types.NewNsqCreateRequest(ndcr, nds, nls, nas)
 

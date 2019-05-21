@@ -55,8 +55,6 @@ type Options struct {
 
 	nsqdCPULimit           string
 	nsqdCPURequest         string
-	nsqdMemoryLimit        string
-	nsqdMemoryRequest      string
 	nsqdPVCStorageResource string
 
 	NsqAdminCPULimitResource      resource.Quantity
@@ -69,11 +67,9 @@ type Options struct {
 	NsqLookupdMemoryLimitResource   resource.Quantity
 	NsqLookupdMemoryRequestResource resource.Quantity
 
-	NsqdCPULimitResource      resource.Quantity
-	NsqdCPURequestResource    resource.Quantity
-	NsqdMemoryLimitResource   resource.Quantity
-	NsqdMemoryRequestResource resource.Quantity
-	NsqdPVCStorageResource    resource.Quantity
+	NsqdCPULimitResource   resource.Quantity
+	NsqdCPURequestResource resource.Quantity
+	NsqdPVCStorageResource resource.Quantity
 
 	Version bool
 }
@@ -118,10 +114,8 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.nsqLookupdMemoryRequest, "nsqlookupd-mem-request", "150Mi", "Memory request resource value for a nsqlookupd instance")
 	pflag.StringVar(&o.nsqLookupdCPURequest, "nsqlookupd-cpu-request", "250m", "CPU request resource value for a nsqlookupd instance")
 
-	pflag.StringVar(&o.nsqdMemoryLimit, "nsqd-mem-limit", "200Mi", "Memory limit resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdCPULimit, "nsqd-cpu-limit", "300m", "CPU limit resource value for a nsqd instance")
-	pflag.StringVar(&o.nsqdMemoryRequest, "nsqd-mem-request", "150Mi", "Memory request resource value for a nsqd instance")
-	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "250m", "CPU request resource value for a nsqd instance")
+	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "300m", "CPU request resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdPVCStorageResource, "nsqd-pvc-storage-resource", "256Gi", "Storage resource value for a nsqd instance")
 }
 
@@ -139,8 +133,6 @@ func (o *Options) MustParse() {
 	o.NsqLookupdMemoryRequestResource = resource.MustParse(o.nsqLookupdMemoryRequest)
 
 	o.NsqdCPULimitResource = resource.MustParse(o.nsqdCPULimit)
-	o.NsqdMemoryLimitResource = resource.MustParse(o.nsqdMemoryLimit)
 	o.NsqdCPURequestResource = resource.MustParse(o.nsqdCPURequest)
-	o.NsqdMemoryRequestResource = resource.MustParse(o.nsqdMemoryRequest)
 	o.NsqdPVCStorageResource = resource.MustParse(o.nsqdPVCStorageResource)
 }

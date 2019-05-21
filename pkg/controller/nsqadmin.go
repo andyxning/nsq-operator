@@ -436,7 +436,7 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	// number does not equal the current desired replicas on the Deployment, we
 	// should update the Deployment resource. If the image changes, we also should update
 	// the deployment resource.
-	if (na.Spec.Replicas != nil && *na.Spec.Replicas != *deployment.Spec.Replicas) || (na.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image) {
+	if (na.Spec.Replicas != *deployment.Spec.Replicas) || (na.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image) {
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of deployment before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
@@ -446,10 +446,10 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 			}
 
 			deploymentCopy := deploymentOld.DeepCopy()
-			deploymentCopy.Spec.Replicas = na.Spec.Replicas
+			deploymentCopy.Spec.Replicas = &na.Spec.Replicas
 			deploymentCopy.Spec.Template.Spec.Containers[0].Image = na.Spec.Image
 			klog.Infof("NsqAdmin %s/%s replicas: %d, image: %v, deployment replicas: %d, image: %v", namespace, name,
-				*na.Spec.Replicas, na.Spec.Image, *deployment.Spec.Replicas, deployment.Spec.Template.Spec.Containers[0].Image)
+				na.Spec.Replicas, na.Spec.Image, *deployment.Spec.Replicas, deployment.Spec.Template.Spec.Containers[0].Image)
 			_, err = nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Update(deploymentCopy)
 			return err
 		})
@@ -525,7 +525,7 @@ func (nac *NsqAdminController) updateNsqAdminStatus(na *nsqv1alpha1.NsqAdmin, de
 		// You can use DeepCopy() to make a deep copy of original object and modify this copy
 		// Or create a copy manually for better performance
 		naCopy := naOld.DeepCopy()
-		naCopy.Status.AvailableReplicas = *na.Spec.Replicas
+		naCopy.Status.AvailableReplicas = na.Spec.Replicas
 		// If the CustomResourceSubresources feature gate is not enabled,
 		// we must use Update instead of UpdateStatus to update the Status block of the NsqAdmin resource.
 		// UpdateStatus will not allow changes to the Spec of the resource,
@@ -640,7 +640,7 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: na.Spec.Replicas,
+			Replicas: &na.Spec.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
