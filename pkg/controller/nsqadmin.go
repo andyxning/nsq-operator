@@ -170,6 +170,7 @@ func NewNsqAdminController(opts *options.Options, kubeClientSet kubernetes.Inter
 			}
 			controller.handleObject(new)
 		},
+		DeleteFunc: func(obj interface{}) { klog.Infof("Delete configmap %#v", obj) },
 	})
 
 	return controller

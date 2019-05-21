@@ -172,6 +172,7 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 			}
 			controller.handleObject(new)
 		},
+		DeleteFunc: func(obj interface{}) { klog.Infof("Delete configmap %#v", obj) },
 	})
 
 	return controller
