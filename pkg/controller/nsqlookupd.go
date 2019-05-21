@@ -172,7 +172,7 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 			}
 			controller.handleObject(new)
 		},
-		DeleteFunc: func(obj interface{}) { klog.Infof("Delete configmap %#v", obj) },
+		DeleteFunc: controller.handleConfigMapDeletionObject,
 	})
 
 	return controller
@@ -683,7 +683,7 @@ func (nlc *NsqLookupdController) enqueueNsqLookupd(obj interface{}) {
 	nlc.workqueue.Add(key)
 }
 
-// handleObject will take any resource implementing metav1.Object and attempt
+// handleObject will take any resource(except configmap deletion) implementing metav1.Object and attempt
 // to find the NsqLookupd resource that 'owns' it. It does this by looking at the
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that NsqLookupd resource to be processed. If the object does not
@@ -719,6 +719,36 @@ func (nlc *NsqLookupdController) handleObject(obj interface{}) {
 		}
 
 		nlc.enqueueNsqLookupd(nl)
+		return
+	}
+}
+
+// handleConfigMapDeletionObject handles configmap deletion.
+func (nlc *NsqLookupdController) handleConfigMapDeletionObject(obj interface{}) {
+	var object metav1.Object
+	var ok bool
+	if object, ok = obj.(metav1.Object); !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("error decoding object, invalid type"))
+			return
+		}
+		object, ok = tombstone.Obj.(metav1.Object)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
+			return
+		}
+		klog.V(4).Infof("Recovered deleted object '%s/%s' from tombstone", object.GetNamespace(), object.GetName())
+	}
+	klog.V(4).Infof("Processing object %s/%s", object.GetNamespace(), object.GetName())
+	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
+		// If this object is not owned by a NsqLookupd, we should not do anything more
+		// with it.
+		if ownerRef.Kind != nsqio.NsqLookupdKind {
+			return
+		}
+
+		klog.Infof("Delete nsqlookup configmap %#v", obj)
 		return
 	}
 }
