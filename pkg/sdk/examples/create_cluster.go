@@ -68,10 +68,12 @@ func main() {
 		LogMappingDir: fmt.Sprintf("/var/log/%s", name),
 	}
 
-	nr := types.NewNsqCreateRequest(name, namespace, messageAvgSize, nds, nls, nas)
-	// Do whatever other fields setting here
-	//nr.NsqdCommandMaxMsgSize = 2 * 1024 * 1024
-	nr.ApplyDefaults()
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize)
+	ndcr.ApplyDefaults()
+	// Customize nsqd config
+	//ndcr.SetMaxBodySize(1024 * 1024 * 10)
+
+	nr := types.NewNsqCreateRequest(ndcr, nds, nls, nas)
 
 	err = sdkv1alpha1.CreateCluster(kubeClient, nsqClient, nr)
 	if err != nil {

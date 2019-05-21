@@ -47,7 +47,7 @@ func main() {
 
 	// Customize wait timeout
 	//wt := 180 * time.Second
-	//nasr.SetWaitTimeout(&wt)
+	//nduir.SetWaitTimeout(wt)
 
 	err = sdkv1alpha1.UpdateNsqdImage(kubeClient, nsqClient, nduir)
 	if err != nil {

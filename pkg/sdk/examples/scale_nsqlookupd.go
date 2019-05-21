@@ -47,7 +47,7 @@ func main() {
 
 	// Customize wait timeout
 	//wt := 180 * time.Second
-	//nlsr.SetWaitTimeout(&wt)
+	//nlsr.SetWaitTimeout(wt)
 
 	err = sdkv1alpha1.ScaleNsqLookupd(nsqClient, nlsr)
 	if err != nil {

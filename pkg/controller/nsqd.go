@@ -171,7 +171,6 @@ func NewNsqdController(opts *options.Options, kubeClientSet kubernetes.Interface
 			}
 			controller.handleObject(new)
 		},
-		DeleteFunc: controller.handleObject,
 	})
 
 	return controller
@@ -332,6 +331,25 @@ func (ndc *NsqdController) syncHandler(key string) error {
 	if err != nil {
 		klog.Errorf("Get/Create statefulset for nsqd %s/%s error: %v", nd.Namespace, nd.Name, err)
 		return err
+	}
+
+	if statefulSet.Status.ReadyReplicas != *statefulSet.Spec.Replicas {
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			nsqdSs, err := ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Get(common.NsqdStatefulSetName(nd.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqd %s/%s statefulset", nd.Namespace, nd.Name)
+				return
+			}
+
+			if nsqdSs.Status.ReadyReplicas != *nsqdSs.Spec.Replicas {
+				klog.Infof("Waiting for nsqd %s/%s pods ready", nd.Namespace, nd.Name)
+				return
+			}
+
+			klog.Infof("Nsqd %s/%s reaches it spec", nd.Namespace, nd.Name)
+			cancel()
+		}, constant.NsqdStatusCheckPeriod)
 	}
 
 	// If the StatefulSet is not controlled by this Nsqd resource, we should log

@@ -20,7 +20,7 @@ import "time"
 
 const (
 	ConfigMapStatusCheckPeriod  = time.Second
-	NsqAdminStatusCheckPeriod   = 4 * time.Second
+	NsqAdminStatusCheckPeriod   = 8 * time.Second
 	NsqLookupdStatusCheckPeriod = 8 * time.Second
 	NsqdStatusCheckPeriod       = 16 * time.Second
 

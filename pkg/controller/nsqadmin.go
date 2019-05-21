@@ -170,7 +170,6 @@ func NewNsqAdminController(opts *options.Options, kubeClientSet kubernetes.Inter
 			}
 			controller.handleObject(new)
 		},
-		DeleteFunc: controller.handleObject,
 	})
 
 	return controller
@@ -323,6 +322,25 @@ func (nac *NsqAdminController) syncHandler(key string) error {
 	if err != nil {
 		klog.Errorf("Get/Create deployment for nsqadmin %s/%s error: %v", na.Namespace, na.Name, err)
 		return err
+	}
+
+	if !(deployment.Status.ReadyReplicas == *deployment.Spec.Replicas && deployment.Status.Replicas == deployment.Status.ReadyReplicas) {
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			nsqAdminDep, err := nac.kubeClientSet.AppsV1().Deployments(na.Namespace).Get(common.NsqAdminDeploymentName(na.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqadmin %s/%s deployment", na.Namespace, na.Name)
+				return
+			}
+
+			if !(nsqAdminDep.Status.ReadyReplicas == *nsqAdminDep.Spec.Replicas && nsqAdminDep.Status.Replicas == nsqAdminDep.Status.ReadyReplicas) {
+				klog.Infof("Waiting for nsqadmin %s/%s pods ready", na.Namespace, na.Name)
+				return
+			}
+
+			klog.Infof("Nsqadmin %s/%s reaches it spec", na.Namespace, na.Name)
+			cancel()
+		}, constant.NsqAdminStatusCheckPeriod)
 	}
 
 	// If the Deployment is not controlled by this NsqAdmin resource, we should log

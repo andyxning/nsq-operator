@@ -24,7 +24,6 @@ import (
 	pkgcommon "github.com/andyxning/nsq-operator/pkg/common"
 	"github.com/andyxning/nsq-operator/pkg/constant"
 	"github.com/andyxning/nsq-operator/pkg/generated/clientset/versioned"
-	"github.com/andyxning/nsq-operator/pkg/sdk/v1alpha1/common"
 	"github.com/andyxning/nsq-operator/pkg/sdk/v1alpha1/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,16 +33,16 @@ import (
 	"k8s.io/klog"
 )
 
-func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clientset, nr *types.NsqCreateRequest) error {
+func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clientset, ncr *types.NsqCreateRequest) error {
 	// Create nsqlookupd configmap
-	nsqLookupdCM := common.AssembleNsqLookupdConfigMap(nr)
+	nsqLookupdCM := ncr.AssembleNsqLookupdConfigMap()
 	klog.Infof("Create nsqlookupd configmap %s/%s", nsqLookupdCM.Namespace, nsqLookupdCM.Name)
-	_, err := kubeClient.CoreV1().ConfigMaps(nr.Namespace).Create(nsqLookupdCM)
+	_, err := kubeClient.CoreV1().ConfigMaps(ncr.NsqdConfig.Namespace).Create(nsqLookupdCM)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Nsqlookupd configmap %s/%s exists. Update it", nsqLookupdCM.Namespace, nsqLookupdCM.Name)
 		var old *corev1.ConfigMap
 		if klog.V(4) {
-			old, err = kubeClient.CoreV1().ConfigMaps(nr.Namespace).Get(nsqLookupdCM.Name, metav1.GetOptions{})
+			old, err = kubeClient.CoreV1().ConfigMaps(ncr.NsqdConfig.Namespace).Get(nsqLookupdCM.Name, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Get old nsqlookupd configmap %s/%s error: %v", nsqLookupdCM.Namespace, nsqLookupdCM.Name, err)
 				return err
@@ -55,7 +54,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		oldCopy := old.DeepCopy()
 		oldCopy.Data = nsqLookupdCM.Data
 		klog.V(4).Infof("New nsqlookupd configmap %s/%s: %#v", nsqLookupdCM.Namespace, nsqLookupdCM.Name, *oldCopy)
-		_, err = kubeClient.CoreV1().ConfigMaps(nr.Namespace).Update(oldCopy)
+		_, err = kubeClient.CoreV1().ConfigMaps(ncr.NsqdConfig.Namespace).Update(oldCopy)
 	}
 
 	if err != nil {
@@ -64,14 +63,14 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 	}
 
 	// Create nsqlookupd
-	nsqLookupd := common.AssembleNsqLookupd(nr)
+	nsqLookupd := ncr.AssembleNsqLookupd()
 	klog.Infof("Create nsqlookupd %s/%s", nsqLookupd.Namespace, nsqLookupd.Name)
-	_, err = nsqClient.NsqV1alpha1().NsqLookupds(nr.Namespace).Create(nsqLookupd)
+	_, err = nsqClient.NsqV1alpha1().NsqLookupds(ncr.NsqdConfig.Namespace).Create(nsqLookupd)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Nsqlookupd %s/%s exists. Update it", nsqLookupd.Namespace, nsqLookupd.Name)
 		var old *v1alpha1.NsqLookupd
 		if klog.V(4) {
-			old, err = nsqClient.NsqV1alpha1().NsqLookupds(nr.Namespace).Get(nsqLookupd.Name, metav1.GetOptions{})
+			old, err = nsqClient.NsqV1alpha1().NsqLookupds(ncr.NsqdConfig.Namespace).Get(nsqLookupd.Name, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Get old nsqlookupd %s/%s error: %v", nsqLookupd.Namespace, nsqLookupd.Name, err)
 				return err
@@ -83,7 +82,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		oldCopy := old.DeepCopy()
 		oldCopy.Spec = nsqLookupd.Spec
 		klog.V(4).Infof("New nsqlookupd %s/%s: %#v", nsqLookupd.Namespace, nsqLookupd.Name, *oldCopy)
-		_, err = nsqClient.NsqV1alpha1().NsqLookupds(nr.Namespace).Update(oldCopy)
+		_, err = nsqClient.NsqV1alpha1().NsqLookupds(ncr.NsqdConfig.Namespace).Update(oldCopy)
 	}
 
 	if err != nil {
@@ -93,17 +92,17 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 	// Wait for nsqlookupd to reach its spec
 	klog.V(2).Infof("Waiting for nsqlookupd %s/%s reach its spec", nsqLookupd.Namespace, nsqLookupd.Name)
-	ctx, cancel := context.WithTimeout(context.Background(), *nr.WaitTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), *ncr.NsqdConfig.WaitTimeout)
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
-		nsqLookupd, err := nsqClient.NsqV1alpha1().NsqLookupds(nr.Namespace).Get(nr.Name, metav1.GetOptions{})
+		nsqLookupd, err := nsqClient.NsqV1alpha1().NsqLookupds(ncr.NsqdConfig.Namespace).Get(ncr.NsqdConfig.Name, metav1.GetOptions{})
 		if err != nil {
 			klog.Warningf("Get nsqlookupd error: %v", err)
 			return
 		}
 
 		if *nsqLookupd.Spec.Replicas != nsqLookupd.Status.AvailableReplicas {
-			klog.V(2).Infof("Spec and status does not match for nsqlookupd %s/%s. Spec: %v, Status: %v",
-				nr.Namespace, nr.Name, nsqLookupd.Spec, nsqLookupd.Status)
+			klog.V(2).Infof("Spec and status does not match for nsqlookupd %s/%s. Spec: %#v, Status: %#v",
+				ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, nsqLookupd.Spec, nsqLookupd.Status)
 			return
 		}
 
@@ -117,10 +116,10 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 	}
 
 	// Check for existence of nsqadmin configmap
-	klog.V(2).Infof("Waiting for nsqadmin configmap %s/%s reach its spec", nr.Namespace, pkgcommon.NsqAdminConfigMapName(nr.Name))
-	ctx, cancel = context.WithTimeout(context.Background(), *nr.WaitTimeout)
+	klog.V(2).Infof("Waiting for nsqadmin configmap %s/%s reach its spec", ncr.NsqdConfig.Namespace, pkgcommon.NsqAdminConfigMapName(ncr.NsqdConfig.Name))
+	ctx, cancel = context.WithTimeout(context.Background(), *ncr.NsqdConfig.WaitTimeout)
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
-		nsqadminCM, err := kubeClient.CoreV1().ConfigMaps(nr.Namespace).Get(pkgcommon.NsqAdminConfigMapName(nr.Name), metav1.GetOptions{})
+		nsqadminCM, err := kubeClient.CoreV1().ConfigMaps(ncr.NsqdConfig.Namespace).Get(pkgcommon.NsqAdminConfigMapName(ncr.NsqdConfig.Name), metav1.GetOptions{})
 		if err != nil {
 			klog.Warningf("Get nsqadmin configmap error: %v", err)
 			return
@@ -138,14 +137,14 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 	}
 
 	// Create nsqadmin
-	nsqadmin := common.AssembleNsqAdmin(nr)
+	nsqadmin := ncr.AssembleNsqAdmin()
 	klog.Infof("Create nsqadmin %s/%s", nsqadmin.Namespace, nsqadmin.Name)
-	_, err = nsqClient.NsqV1alpha1().NsqAdmins(nr.Namespace).Create(nsqadmin)
+	_, err = nsqClient.NsqV1alpha1().NsqAdmins(ncr.NsqdConfig.Namespace).Create(nsqadmin)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Nsqadmin %s/%s exists. Update it", nsqadmin.Namespace, nsqadmin.Name)
 		var old *v1alpha1.NsqAdmin
 		if klog.V(4) {
-			old, err = nsqClient.NsqV1alpha1().NsqAdmins(nr.Namespace).Get(nsqadmin.Name, metav1.GetOptions{})
+			old, err = nsqClient.NsqV1alpha1().NsqAdmins(ncr.NsqdConfig.Namespace).Get(nsqadmin.Name, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Get old nsqadmin %s/%s error: %v", nsqadmin.Namespace, nsqadmin.Name, err)
 				return err
@@ -157,7 +156,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		oldCopy := old.DeepCopy()
 		oldCopy.Spec = nsqadmin.Spec
 		klog.V(4).Infof("New nsqadmin %s/%s: %#v", nsqadmin.Namespace, nsqadmin.Name, *oldCopy)
-		_, err = nsqClient.NsqV1alpha1().NsqAdmins(nr.Namespace).Update(oldCopy)
+		_, err = nsqClient.NsqV1alpha1().NsqAdmins(ncr.NsqdConfig.Namespace).Update(oldCopy)
 	}
 
 	if err != nil {
@@ -167,17 +166,17 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 	// Wait for nsqadmin to reach its spec
 	klog.V(2).Infof("Waiting for nsqadmin %s/%s reach its spec", nsqadmin.Namespace, nsqadmin.Name)
-	ctx, cancel = context.WithTimeout(context.Background(), *nr.WaitTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), *ncr.NsqdConfig.WaitTimeout)
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
-		nsqAdmin, err := nsqClient.NsqV1alpha1().NsqAdmins(nr.Namespace).Get(nr.Name, metav1.GetOptions{})
+		nsqAdmin, err := nsqClient.NsqV1alpha1().NsqAdmins(ncr.NsqdConfig.Namespace).Get(ncr.NsqdConfig.Name, metav1.GetOptions{})
 		if err != nil {
 			klog.Warningf("Get nsqadmin error: %v", err)
 			return
 		}
 
 		if *nsqAdmin.Spec.Replicas != nsqAdmin.Status.AvailableReplicas {
-			klog.V(2).Infof("Spec and status does not match for nsqadmin %s/%s. Spec: %v, Status: %v",
-				nr.Namespace, nr.Name, nsqAdmin.Spec, nsqAdmin.Status)
+			klog.V(2).Infof("Spec and status does not match for nsqadmin %s/%s. Spec: %#v, Status: %#v",
+				ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, nsqAdmin.Spec, nsqAdmin.Status)
 			return
 		}
 
@@ -191,19 +190,19 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 	}
 
 	// Create nsqd configmap
-	labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": pkgcommon.NsqLookupdDeploymentName(nr.Name)}}
+	labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": pkgcommon.NsqLookupdDeploymentName(ncr.NsqdConfig.Name)}}
 	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
 	if err != nil {
-		klog.Errorf("Gen label selector for nsqlookupd %s/%s pods error: %v", nr.Namespace, nr.Name, err)
+		klog.Errorf("Gen label selector for nsqlookupd %s/%s pods error: %v", ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, err)
 		return err
 	}
 
-	podList, err := kubeClient.CoreV1().Pods(nr.Namespace).List(metav1.ListOptions{
+	podList, err := kubeClient.CoreV1().Pods(ncr.NsqdConfig.Namespace).List(metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 
 	if err != nil {
-		klog.Errorf("List nsqlookupd %s/%s pods error: %v", nr.Namespace, nr.Name, err)
+		klog.Errorf("List nsqlookupd %s/%s pods error: %v", ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, err)
 		return err
 	}
 
@@ -212,14 +211,14 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdTcpPort))
 	}
 
-	nsqdCM := common.AssembleNsqdConfigMap(nr, addresses)
+	nsqdCM := ncr.NsqdConfig.AssembleNsqdConfigMap(addresses)
 	klog.Infof("Create nsqd configmap %s/%s", nsqdCM.Namespace, nsqdCM.Name)
-	_, err = kubeClient.CoreV1().ConfigMaps(nr.Namespace).Create(nsqdCM)
+	_, err = kubeClient.CoreV1().ConfigMaps(ncr.NsqdConfig.Namespace).Create(nsqdCM)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Nsqd configmap %s/%s exists. Update it", nsqdCM.Namespace, nsqdCM.Name)
 		var old *corev1.ConfigMap
 		if klog.V(4) {
-			old, err = kubeClient.CoreV1().ConfigMaps(nr.Namespace).Get(nsqdCM.Name, metav1.GetOptions{})
+			old, err = kubeClient.CoreV1().ConfigMaps(ncr.NsqdConfig.Namespace).Get(nsqdCM.Name, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Get old nsqd configmap %s/%s error: %v", nsqdCM.Namespace, nsqdCM.Name, err)
 				return err
@@ -231,7 +230,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		oldCopy := old.DeepCopy()
 		oldCopy.Data = nsqdCM.Data
 		klog.V(4).Infof("New nsqd configmap %s/%s: %#v", nsqdCM.Namespace, nsqdCM.Name, *oldCopy)
-		_, err = kubeClient.CoreV1().ConfigMaps(nr.Namespace).Update(oldCopy)
+		_, err = kubeClient.CoreV1().ConfigMaps(ncr.NsqdConfig.Namespace).Update(oldCopy)
 	}
 
 	if err != nil {
@@ -240,14 +239,14 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 	}
 
 	// Create nsqd
-	nsqd := common.AssembleNsqd(nr)
+	nsqd := ncr.AssembleNsqd()
 	klog.Infof("Create nsqd %s/%s", nsqd.Namespace, nsqd.Name)
-	_, err = nsqClient.NsqV1alpha1().Nsqds(nr.Namespace).Create(nsqd)
+	_, err = nsqClient.NsqV1alpha1().Nsqds(ncr.NsqdConfig.Namespace).Create(nsqd)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Nsqd %s/%s exists. Update it", nsqd.Namespace, nsqd.Name)
 		var old *v1alpha1.Nsqd
 		if klog.V(4) {
-			old, err = nsqClient.NsqV1alpha1().Nsqds(nr.Namespace).Get(nsqd.Name, metav1.GetOptions{})
+			old, err = nsqClient.NsqV1alpha1().Nsqds(ncr.NsqdConfig.Namespace).Get(nsqd.Name, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Get old nsqd %s/%s error: %v", nsqd.Namespace, nsqd.Name, err)
 				return err
@@ -259,7 +258,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		oldCopy := old.DeepCopy()
 		oldCopy.Spec = nsqd.Spec
 		klog.V(4).Infof("New nsqd %s/%s: %#v", nsqd.Namespace, nsqd.Name, *oldCopy)
-		_, err = nsqClient.NsqV1alpha1().Nsqds(nr.Namespace).Update(oldCopy)
+		_, err = nsqClient.NsqV1alpha1().Nsqds(ncr.NsqdConfig.Namespace).Update(oldCopy)
 	}
 
 	if err != nil {
@@ -269,17 +268,17 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 	// Wait for nsqd to reach its spec
 	klog.V(2).Infof("Waiting for nsqd %s/%s reach its spec", nsqd.Namespace, nsqd.Name)
-	ctx, cancel = context.WithTimeout(context.Background(), *nr.WaitTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), *ncr.NsqdConfig.WaitTimeout)
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
-		nsqd, err := nsqClient.NsqV1alpha1().Nsqds(nr.Namespace).Get(nr.Name, metav1.GetOptions{})
+		nsqd, err := nsqClient.NsqV1alpha1().Nsqds(ncr.NsqdConfig.Namespace).Get(ncr.NsqdConfig.Name, metav1.GetOptions{})
 		if err != nil {
 			klog.Warningf("Get nsqd error: %v", err)
 			return
 		}
 
 		if *nsqd.Spec.Replicas != nsqd.Status.AvailableReplicas {
-			klog.V(2).Infof("Spec and status does not match for nsqd %s/%s. Spec: %v, Status: %v",
-				nr.Namespace, nr.Name, nsqd.Spec, nsqd.Status)
+			klog.V(2).Infof("Spec and status does not match for nsqd %s/%s. Spec: %#v, Status: %#v",
+				ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, nsqd.Spec, nsqd.Status)
 			return
 		}
 
@@ -868,6 +867,113 @@ func UpdateNsqdImage(kubeClient *kubernetes.Clientset, nsqClient *versioned.Clie
 		klog.Errorf("Timeout for waiting nsqd %s/%s reach image %s", nduir.Namespace, nduir.Name, nduir.Image)
 		return ctx.Err()
 	}
+
+	return nil
+}
+
+func AdjustNsqdConfig(kubeClient *kubernetes.Clientset, ndcr *types.NsqdConfigRequest) error {
+	klog.Infof("Update nsqd %s/%s config to %#v", ndcr.Namespace, ndcr.Name, ndcr.AssembleNsqdConfigMap([]string{}).Data)
+	ctx, cancel := context.WithTimeout(context.Background(), *ndcr.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		// Create nsqd configmap
+		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": pkgcommon.NsqLookupdDeploymentName(ndcr.Name)}}
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			klog.Errorf("Gen label selector for nsqlookupd %s/%s pods error: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		podList, err := kubeClient.CoreV1().Pods(ndcr.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+
+		if err != nil {
+			klog.Errorf("List nsqlookupd %s/%s pods error: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		var addresses []string
+		for _, pod := range podList.Items {
+			addresses = append(addresses, fmt.Sprintf("%s:%v", pod.Status.PodIP, constant.NsqLookupdTcpPort))
+		}
+
+		nsqdCMWanted := ndcr.AssembleNsqdConfigMap(addresses)
+
+		nsqdCM, err := kubeClient.CoreV1().ConfigMaps(ndcr.Namespace).Get(pkgcommon.NsqdConfigMapName(ndcr.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Warningf("Get nsqd %s/%s configmap error: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		nsqdCMNew := nsqdCM.DeepCopy()
+		nsqdCMNew.Data = nsqdCMWanted.Data
+
+		_, err = kubeClient.CoreV1().ConfigMaps(ndcr.Namespace).Update(nsqdCMNew)
+		if err != nil {
+			klog.Errorf("Update nsqd %s/%s configmap error: %v", ndcr.Namespace, ndcr.Name, err)
+		}
+
+		klog.Infof("Update nsqd %s/%s configmap success", ndcr.Namespace, ndcr.Name)
+		cancel()
+	}, constant.ConfigMapStatusCheckPeriod)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for waiting nsqd %s/%s configmap to be ready", ndcr.Namespace, ndcr.Name)
+		return ctx.Err()
+	}
+
+	configmap, err := kubeClient.CoreV1().ConfigMaps(ndcr.Namespace).Get(pkgcommon.NsqdConfigMapName(ndcr.Name), metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Get configmap for nsqd %s/%s error: %v", ndcr.Namespace, ndcr.Name, err)
+		return err
+	}
+	configmapHash, err := pkgcommon.Hash(configmap.Data)
+	if err != nil {
+		klog.Errorf("Hash configmap data for nsqd %s/%s error: %v", ndcr.Namespace, ndcr.Name, err)
+		return err
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), *ndcr.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": pkgcommon.NsqdStatefulSetName(ndcr.Name)}}
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			klog.Errorf("Failed to generate label selector for nsqd %s/%s: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		podList, err := kubeClient.CoreV1().Pods(ndcr.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+
+		if err != nil {
+			klog.Errorf("Failed to list nsqd %s/%s pods: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		for _, pod := range podList.Items {
+			if val, exists := pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey]; exists && val != configmapHash {
+				klog.Infof("Spec and status signature annotation do not match for nsqd %s/%s. Pod: %v. "+
+					"Spec signature annotation: %v, new signature annotation: %v",
+					ndcr.Namespace, ndcr.Name, pod.Name, pod.GetAnnotations()[constant.NsqConfigMapAnnotationKey], configmapHash)
+				return
+			}
+		}
+
+		nsqdSs, err := kubeClient.AppsV1().StatefulSets(ndcr.Namespace).Get(pkgcommon.NsqdStatefulSetName(ndcr.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("Failed to get nsqd %s/%s statefulset", ndcr.Namespace, ndcr.Name)
+			return
+		}
+
+		if nsqdSs.Status.ReadyReplicas != *nsqdSs.Spec.Replicas {
+			klog.Errorf("Waiting for nsqd %s/%s pods ready", ndcr.Namespace, ndcr.Name)
+			return
+		}
+
+		klog.Infof("Nsqd %s/%s configmap change rolling update success", ndcr.Namespace, ndcr.Name)
+		cancel()
+	}, constant.NsqdStatusCheckPeriod)
 
 	return nil
 }
