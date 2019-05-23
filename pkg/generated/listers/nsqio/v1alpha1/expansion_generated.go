@@ -41,3 +41,11 @@ type NsqdListerExpansion interface{}
 // NsqdNamespaceListerExpansion allows custom methods to be added to
 // NsqdNamespaceLister.
 type NsqdNamespaceListerExpansion interface{}
+
+// NsqdScaleListerExpansion allows custom methods to be added to
+// NsqdScaleLister.
+type NsqdScaleListerExpansion interface{}
+
+// NsqdScaleNamespaceListerExpansion allows custom methods to be added to
+// NsqdScaleNamespaceLister.
+type NsqdScaleNamespaceListerExpansion interface{}

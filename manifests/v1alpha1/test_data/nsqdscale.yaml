@@ -1,0 +1,8 @@
+apiVersion: "nsq.io/v1alpha1"
+kind: NsqdScale
+metadata:
+  name: test
+spec:
+  qpsThreshold: 40000
+  minimum: 1
+  maximum: 4

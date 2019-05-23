@@ -59,6 +59,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Nsq().V1alpha1().NsqLookupds().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("nsqds"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Nsq().V1alpha1().Nsqds().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("nsqdscales"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Nsq().V1alpha1().NsqdScales().Informer()}, nil
 
 	}
 

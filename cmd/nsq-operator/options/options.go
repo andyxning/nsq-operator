@@ -19,6 +19,7 @@ package options
 import (
 	"flag"
 	"os"
+	"time"
 
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -53,6 +54,11 @@ type Options struct {
 	nsqLookupdMemoryLimit   string
 	nsqLookupdMemoryRequest string
 
+	qpsReporterCPULimit      string
+	qpsReporterCPURequest    string
+	qpsReporterMemoryLimit   string
+	qpsReporterMemoryRequest string
+
 	nsqdCPULimit           string
 	nsqdCPURequest         string
 	nsqdPVCStorageResource string
@@ -70,6 +76,13 @@ type Options struct {
 	NsqdCPULimitResource   resource.Quantity
 	NsqdCPURequestResource resource.Quantity
 	NsqdPVCStorageResource resource.Quantity
+
+	QpsReporterCPULimitResource      resource.Quantity
+	QpsReporterCPURequestResource    resource.Quantity
+	QpsReporterMemoryLimitResource   resource.Quantity
+	QpsReporterMemoryRequestResource resource.Quantity
+
+	NsqdScaleValidDuration time.Duration
 
 	Version bool
 }
@@ -117,6 +130,13 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.nsqdCPULimit, "nsqd-cpu-limit", "300m", "CPU limit resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "300m", "CPU request resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdPVCStorageResource, "nsqd-pvc-storage-resource", "256Gi", "Storage resource value for a nsqd instance")
+
+	pflag.StringVar(&o.nsqLookupdMemoryLimit, "qps-reporter-mem-limit", "100Mi", "Memory limit resource value for a qps-reporter instance")
+	pflag.StringVar(&o.nsqLookupdCPULimit, "qps-reporter-cpu-limit", "100m", "CPU limit resource value for a qps-reporter instance")
+	pflag.StringVar(&o.nsqLookupdMemoryRequest, "qps-reporter-mem-request", "100Mi", "Memory request resource value for a qps-reporter instance")
+	pflag.StringVar(&o.nsqLookupdCPURequest, "qps-reporter-cpu-request", "100m", "CPU request resource value for a qps-reporter instance")
+
+	pflag.DurationVar(&o.NsqdScaleValidDuration, "nsqd-scale-valid-duration", 60*time.Second, "Time duration during which qps is valid and counted")
 }
 
 func (o *Options) MustParse() {
@@ -135,4 +155,9 @@ func (o *Options) MustParse() {
 	o.NsqdCPULimitResource = resource.MustParse(o.nsqdCPULimit)
 	o.NsqdCPURequestResource = resource.MustParse(o.nsqdCPURequest)
 	o.NsqdPVCStorageResource = resource.MustParse(o.nsqdPVCStorageResource)
+
+	o.QpsReporterCPULimitResource = resource.MustParse(o.qpsReporterCPULimit)
+	o.QpsReporterMemoryLimitResource = resource.MustParse(o.qpsReporterMemoryLimit)
+	o.QpsReporterCPURequestResource = resource.MustParse(o.qpsReporterCPURequest)
+	o.QpsReporterMemoryRequestResource = resource.MustParse(o.qpsReporterMemoryRequest)
 }

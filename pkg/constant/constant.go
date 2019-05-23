@@ -19,6 +19,7 @@ package constant
 const (
 	// Controller name
 	NsqdControllerName       = "nsqd-controller"
+	NsqdScaleControllerName  = "nsqdscale-controller"
 	NsqLookupdControllerName = "nsqlookupd-controller"
 	NsqAdminControllerName   = "nsqadmin-controller"
 

@@ -20,6 +20,8 @@ some feedback.
 * Log Management. 
   * Rotate log by [logrotate](https://linux.die.net/man/8/logrotate) hourly
   * Mount log directory to a dedicated host machine directory in nsqd/nsqlookupd/nsqadmin spec
+* QPS based horizontal pod autoscale. No memory/cpu/network/disk resources based autoscale support. QPS autoscale does 
+not rely on any other systems. It is implemented in Kubernetes way. [More details](docs/auto_scale.md)
 
 # Runtime Requirement
 * Kubernetes >= 1.14.0

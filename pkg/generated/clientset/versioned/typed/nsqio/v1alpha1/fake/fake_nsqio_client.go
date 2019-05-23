@@ -40,6 +40,10 @@ func (c *FakeNsqV1alpha1) Nsqds(namespace string) v1alpha1.NsqdInterface {
 	return &FakeNsqds{c, namespace}
 }
 
+func (c *FakeNsqV1alpha1) NsqdScales(namespace string) v1alpha1.NsqdScaleInterface {
+	return &FakeNsqdScales{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeNsqV1alpha1) RESTClient() rest.Interface {

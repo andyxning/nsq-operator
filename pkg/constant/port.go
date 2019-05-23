@@ -22,4 +22,5 @@ const (
 	NsqLookupdTcpPort  = 4160
 	NsqdHttpPort       = 4151
 	NsqdTcpPort        = 4150
+	NsqdScaleHttpPort  = 4131
 )

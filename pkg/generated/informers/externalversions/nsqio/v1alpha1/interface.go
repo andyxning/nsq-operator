@@ -30,6 +30,8 @@ type Interface interface {
 	NsqLookupds() NsqLookupdInformer
 	// Nsqds returns a NsqdInformer.
 	Nsqds() NsqdInformer
+	// NsqdScales returns a NsqdScaleInformer.
+	NsqdScales() NsqdScaleInformer
 }
 
 type version struct {
@@ -56,4 +58,9 @@ func (v *version) NsqLookupds() NsqLookupdInformer {
 // Nsqds returns a NsqdInformer.
 func (v *version) Nsqds() NsqdInformer {
 	return &nsqdInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// NsqdScales returns a NsqdScaleInformer.
+func (v *version) NsqdScales() NsqdScaleInformer {
+	return &nsqdScaleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
