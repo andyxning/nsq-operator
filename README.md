@@ -8,7 +8,20 @@
 But, we encourage end users to give **nsq-operator** a try, i.e., testing and benching **nsq-operator**, and give us 
 some feedback.
 
-# Runtime Requirements
+# Feature
+* High availability. NSQ-Operator supports HA by utilizing Kubernetes 
+[leaderelection](https://github.com/kubernetes/client-go/tree/master/tools/leaderelection) package and 
+[coordination.k8s.io/lease](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.14/#lease-v1-coordination-k8s-io) resource.
+* Create/Delete a nsq cluster
+* Scale nsqd/nsqlookupd/nsqadmin components separately
+* Update nsqd/nsqlookupd/nsqadmin image separately
+* Adjust nsqd command line arguments
+* Adjust nsqd pods memory resource according to average message size, memory queue size, memory oversale percent and channel count
+* Log Management. 
+  * Rotate log by [logrotate](https://linux.die.net/man/8/logrotate) hourly
+  * Mount log directory to a dedicated host machine directory in nsqd/nsqlookupd/nsqadmin spec
+
+# Runtime Requirement
 * Kubernetes >= 1.14.0
 * Golang >= 1.12.0
 
