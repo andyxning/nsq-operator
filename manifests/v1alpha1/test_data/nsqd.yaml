@@ -7,3 +7,7 @@ spec:
   image: dockerops123/nsqd:1.1.0
   storageClassName: standard
   logMappingDir: /var/log/test
+  messageAvgSize: 1048576   # 1Mi
+  memoryQueueSize: 10000
+  memoryOverSalePercent: 50
+  channelCount: 0

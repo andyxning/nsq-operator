@@ -100,7 +100,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 			return
 		}
 
-		if *nsqLookupd.Spec.Replicas != nsqLookupd.Status.AvailableReplicas {
+		if nsqLookupd.Spec.Replicas != nsqLookupd.Status.AvailableReplicas {
 			klog.V(2).Infof("Spec and status does not match for nsqlookupd %s/%s. Spec: %#v, Status: %#v",
 				ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, nsqLookupd.Spec, nsqLookupd.Status)
 			return
@@ -174,7 +174,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 			return
 		}
 
-		if *nsqAdmin.Spec.Replicas != nsqAdmin.Status.AvailableReplicas {
+		if nsqAdmin.Spec.Replicas != nsqAdmin.Status.AvailableReplicas {
 			klog.V(2).Infof("Spec and status does not match for nsqadmin %s/%s. Spec: %#v, Status: %#v",
 				ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, nsqAdmin.Spec, nsqAdmin.Status)
 			return
@@ -276,7 +276,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 			return
 		}
 
-		if *nsqd.Spec.Replicas != nsqd.Status.AvailableReplicas {
+		if nsqd.Spec.Replicas != nsqd.Status.AvailableReplicas {
 			klog.V(2).Infof("Spec and status does not match for nsqd %s/%s. Spec: %#v, Status: %#v",
 				ncr.NsqdConfig.Namespace, ncr.NsqdConfig.Name, nsqd.Spec, nsqd.Status)
 			return
@@ -496,7 +496,7 @@ func ScaleNsqAdmin(nsqClient *versioned.Clientset, nasr *types.NsqAdminScaleRequ
 		}
 
 		nsqAdminCopy := nsqAdmin.DeepCopy()
-		nsqAdminCopy.Spec.Replicas = &nasr.Replicas
+		nsqAdminCopy.Spec.Replicas = nasr.Replicas
 		_, err = nsqClient.NsqV1alpha1().NsqAdmins(nasr.Namespace).Update(nsqAdminCopy)
 		if err != nil {
 			klog.Errorf("Update nsqadmin %s/%s error: %v", nasr.Namespace, nasr.Name, err)
@@ -549,7 +549,7 @@ func ScaleNsqLookupd(nsqClient *versioned.Clientset, nlsr *types.NsqLookupdScale
 		}
 
 		nsqLookupdCopy := nsqLookupd.DeepCopy()
-		nsqLookupdCopy.Spec.Replicas = &nlsr.Replicas
+		nsqLookupdCopy.Spec.Replicas = nlsr.Replicas
 		_, err = nsqClient.NsqV1alpha1().NsqLookupds(nlsr.Namespace).Update(nsqLookupdCopy)
 		if err != nil {
 			klog.Errorf("Update nsqlookupd %s/%s error: %v", nlsr.Namespace, nlsr.Name, err)
@@ -602,7 +602,7 @@ func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdScaleRequest) err
 		}
 
 		nsqdCopy := nsqd.DeepCopy()
-		nsqdCopy.Spec.Replicas = &ndsr.Replicas
+		nsqdCopy.Spec.Replicas = ndsr.Replicas
 		_, err = nsqClient.NsqV1alpha1().Nsqds(ndsr.Namespace).Update(nsqdCopy)
 		if err != nil {
 			klog.Errorf("Update nsqd %s/%s error: %v", ndsr.Namespace, ndsr.Name, err)

@@ -19,24 +19,19 @@ package types
 import "time"
 
 var (
-	nsqdMemoryOverSalePercent = 50
-
-	topicMemoryQueueSize   = 10000
-	channelMemoryQueueSize = 10000
-
-	nsqdCommandDataPath               = "/data"
-	nsqdCommandMaxBodySize            = 5242880 // 5M
-	nsqdCommandMaxChannelConsumers    = 1024
-	nsqdCommandMaxMsgSize             = 1048576 // 1M
-	nsqdCommandMaxOutputBufferTimeout = 250 * time.Millisecond
-	nsqdCommandSyncEvery              = 2500
-	nsqdCommandSyncTimeout            = 2 * time.Second
-	nsqdCommandStatsdMemStats         = true
-	nsqdCommandStatsdInterval         = 30 * time.Second
-	nsqdCommandSnappy                 = true
-	nsqdCommandMaxRequeueTimeout      = time.Hour
-	nsqdCommandMsgTimeout             = time.Minute
-	nsqdCommandMaxHeartbeatInterval   = time.Minute
+	nsqdCommandDataPath                     = "/data"
+	nsqdCommandMaxBodySize            int32 = 5242880 // 5Mi
+	nsqdCommandMaxChannelConsumers    int32 = 1024
+	nsqdCommandMaxMsgSize             int32 = 10485760 // 10Mi
+	nsqdCommandMaxOutputBufferTimeout       = 250 * time.Millisecond
+	nsqdCommandSyncEvery              int32 = 2500
+	nsqdCommandSyncTimeout                  = 2 * time.Second
+	nsqdCommandStatsdMemStats               = true
+	nsqdCommandStatsdInterval               = 30 * time.Second
+	nsqdCommandSnappy                       = true
+	nsqdCommandMaxRequeueTimeout            = time.Hour
+	nsqdCommandMsgTimeout                   = time.Minute
+	nsqdCommandMaxHeartbeatInterval         = time.Minute
 
 	waitTimeout = 900 * time.Second
 )

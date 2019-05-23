@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/andyxning/nsq-operator/pkg/constant"
 	"github.com/andyxning/nsq-operator/pkg/generated/informers/externalversions/nsqio/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -444,7 +446,7 @@ func (ndc *NsqdController) syncHandler(key string) error {
 	// number does not equal the current desired replicas on the StatefulSet, we
 	// should update the StatefulSet resource. If the image changes, we also should update
 	// the deployment resource.
-	if (nd.Spec.Replicas != nil && *nd.Spec.Replicas != *statefulSet.Spec.Replicas) || (nd.Spec.Image != statefulSet.Spec.Template.Spec.Containers[0].Image) {
+	if (nd.Spec.Replicas != *statefulSet.Spec.Replicas) || (nd.Spec.Image != statefulSet.Spec.Template.Spec.Containers[0].Image) {
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of statefulset before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
@@ -454,10 +456,10 @@ func (ndc *NsqdController) syncHandler(key string) error {
 			}
 
 			statefulSetCopy := statefulSetOld.DeepCopy()
-			statefulSetCopy.Spec.Replicas = nd.Spec.Replicas
+			statefulSetCopy.Spec.Replicas = &nd.Spec.Replicas
 			statefulSetCopy.Spec.Template.Spec.Containers[0].Image = nd.Spec.Image
 			klog.Infof("Nsqd %s/%s replicas: %d, image: %v, statefulset replicas: %d, image: %v", namespace, name,
-				*nd.Spec.Replicas, nd.Spec.Image, *statefulSet.Spec.Replicas, statefulSet.Spec.Template.Spec.Containers[0].Image)
+				nd.Spec.Replicas, nd.Spec.Image, *statefulSet.Spec.Replicas, statefulSet.Spec.Template.Spec.Containers[0].Image)
 			_, err = ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Update(statefulSetCopy)
 			return err
 		})
@@ -513,6 +515,89 @@ func (ndc *NsqdController) syncHandler(key string) error {
 
 	}
 
+	if !(nd.Spec.MemoryOverSalePercent == nd.Status.MemoryOverSalePercent &&
+		nd.Spec.MessageAvgSize == nd.Status.MessageAvgSize &&
+		nd.Spec.MemoryQueueSize == nd.Status.MemoryQueueSize &&
+		nd.Spec.ChannelCount == nd.Status.ChannelCount) {
+
+		memRequest, memLimit := ndc.computeNsqdMemoryResource(nd)
+		newResources := corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    ndc.opts.NsqdCPULimitResource,
+				corev1.ResourceMemory: memRequest,
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    ndc.opts.NsqdCPURequestResource,
+				corev1.ResourceMemory: memLimit,
+			},
+		}
+
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Retrieve the latest version of statefulset before attempting update
+			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+			statefulSetOld, err := ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Get(statefulSetName, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get statefulset %s/%s from apiserver error: %v", nd.Namespace, statefulSetName, err)
+			}
+
+			statefulSetCopy := statefulSetOld.DeepCopy()
+			statefulSetCopy.Spec.Template.Spec.Containers[0].Resources = newResources
+			klog.Infof("Nsqd %s/%s statefulset resources: %+v", namespace, name, newResources)
+			_, err = ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Update(statefulSetCopy)
+			return err
+		})
+
+		// If an error occurs during Update, we'll requeue the item so we can
+		// attempt processing again later. This could have been caused by a
+		// temporary network failure, or any other transient reason.
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wait.UntilWithContext(ctx, func(ctx context.Context) {
+			nsqdSs, err := ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Get(common.NsqdStatefulSetName(nd.Name), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get nsqd %s/%s statefulset", nd.Namespace, nd.Name)
+				return
+			}
+
+			if nsqdSs.Status.ReadyReplicas != *nsqdSs.Spec.Replicas {
+				klog.Errorf("Waiting for nsqd %s/%s pods ready", nd.Namespace, nd.Name)
+				return
+			}
+
+			labelSelector := &metav1.LabelSelector{MatchLabels: map[string]string{"cluster": common.NsqdStatefulSetName(nd.Name)}}
+			selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+			if err != nil {
+				klog.Errorf("Failed to generate label selector for nsqd %s/%s: %v", nd.Namespace, nd.Name, err)
+				return
+			}
+
+			podList, err := ndc.kubeClientSet.CoreV1().Pods(nd.Namespace).List(metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+
+			if err != nil {
+				klog.Errorf("Failed to list nsqd %s/%s pods: %v", nd.Namespace, nd.Name, err)
+				return
+			}
+
+			for _, pod := range podList.Items {
+				if !reflect.DeepEqual(pod.Spec.Containers[0].Resources, newResources) {
+					klog.Infof("New resources does not match for nsqd %s/%s. Pod: %v. "+
+						"Old resources: %v, new resources: %v",
+						nd.Namespace, nd.Name, pod.Name, pod.Spec.Containers[0].Resources, newResources)
+					return
+				}
+			}
+
+			klog.Infof("Nsqd %s/%s reaches its replicas or image", nd.Namespace, nd.Name)
+			cancel()
+		}, constant.NsqdStatusCheckPeriod)
+
+	}
+
 	// Finally, we update the status block of the Nsqd resource to reflect the
 	// current state of the world
 	err = ndc.updateNsqdStatus(nd, statefulSet)
@@ -535,7 +620,11 @@ func (ndc *NsqdController) updateNsqdStatus(nd *nsqv1alpha1.Nsqd, statefulSet *a
 		// You can use DeepCopy() to make a deep copy of original object and modify this copy
 		// Or create a copy manually for better performance
 		ndCopy := ndOld.DeepCopy()
-		ndCopy.Status.AvailableReplicas = *nd.Spec.Replicas
+		ndCopy.Status.AvailableReplicas = nd.Spec.Replicas
+		ndCopy.Status.MemoryOverSalePercent = nd.Spec.MemoryOverSalePercent
+		ndCopy.Status.MessageAvgSize = nd.Spec.MessageAvgSize
+		ndCopy.Status.MemoryQueueSize = nd.Spec.MemoryQueueSize
+		ndCopy.Status.ChannelCount = nd.Spec.ChannelCount
 		// If the CustomResourceSubresources feature gate is not enabled,
 		// we must use Update instead of UpdateStatus to update the Status block of the NsqAdmin resource.
 		// UpdateStatus will not allow changes to the Spec of the resource,
@@ -662,10 +751,26 @@ func (ndc *NsqdController) updateNsqdConfigMapOwnerReference(nd *nsqv1alpha1.Nsq
 	return err
 }
 
+// computeNsqdMemoryResource updates the OwnerReferences of nsqd configmap to nsqd.
+func (ndc *NsqdController) computeNsqdMemoryResource(nd *nsqv1alpha1.Nsqd) (request resource.Quantity, limit resource.Quantity) {
+	count := int64(nd.Spec.ChannelCount + 1) // 1 for topic itself
+	singleMemUsage := int64(nd.Spec.MessageAvgSize) * int64(nd.Spec.MemoryQueueSize)
+
+	standardTotalMem := count * singleMemUsage
+	AdjustedTotalMem := float64(standardTotalMem) * (1 + float64(nd.Spec.MemoryOverSalePercent)/100.0)
+
+	request = resource.MustParse(fmt.Sprintf("%vMi", int64(math.Ceil(AdjustedTotalMem/1024.0/1024.0))))
+	limit = request
+
+	return request, limit
+}
+
 // newStatefulSet creates a new StatefulSet for a Nsqd resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the NsqAdmin resource that 'owns' it.
 func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash string) *appsv1.StatefulSet {
+	memRequest, memLimit := ndc.computeNsqdMemoryResource(nd)
+
 	labels := map[string]string{
 		"cluster": common.NsqdStatefulSetName(nd.Name),
 	}
@@ -682,7 +787,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: nd.Spec.Replicas,
+			Replicas: &nd.Spec.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -738,11 +843,11 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    ndc.opts.NsqdCPULimitResource,
-									corev1.ResourceMemory: ndc.opts.NsqdMemoryLimitResource,
+									corev1.ResourceMemory: memRequest,
 								},
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    ndc.opts.NsqdCPURequestResource,
-									corev1.ResourceMemory: ndc.opts.NsqdMemoryRequestResource,
+									corev1.ResourceMemory: memLimit,
 								},
 							},
 							LivenessProbe: &corev1.Probe{

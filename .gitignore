@@ -123,4 +123,3 @@ venv.bak/
 .idea/
 /cmd/nsq-operator/nsq-operator
 /nsq-operator
-/test_config_map

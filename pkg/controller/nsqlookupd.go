@@ -447,7 +447,7 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 	// number does not equal the current desired replicas on the deployment, we
 	// should update the deployment resource. If the image changes, we also should update
 	// the deployment resource.
-	if (nl.Spec.Replicas != nil && *nl.Spec.Replicas != *deployment.Spec.Replicas) || (nl.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image) {
+	if (nl.Spec.Replicas != *deployment.Spec.Replicas) || (nl.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image) {
 		nsqLookupdInstancesChanged = true
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of deployment before attempting update
@@ -457,10 +457,10 @@ func (nlc *NsqLookupdController) syncHandler(key string) error {
 				return fmt.Errorf("get deployment %s/%s from apiserver error: %v", nl.Namespace, deploymentName, err)
 			}
 			deploymentCopy := deploymentOld.DeepCopy()
-			deploymentCopy.Spec.Replicas = nl.Spec.Replicas
+			deploymentCopy.Spec.Replicas = &nl.Spec.Replicas
 			deploymentCopy.Spec.Template.Spec.Containers[0].Image = nl.Spec.Image
 			klog.Infof("NsqLookupd %s/%s replicas: %d, image: %v, deployment replicas: %d, image: %v", namespace, name,
-				*nl.Spec.Replicas, nl.Spec.Image, *deployment.Spec.Replicas, deployment.Spec.Template.Spec.Containers[0].Image)
+				nl.Spec.Replicas, nl.Spec.Image, *deployment.Spec.Replicas, deployment.Spec.Template.Spec.Containers[0].Image)
 			_, err = nlc.kubeClientSet.AppsV1().Deployments(nl.Namespace).Update(deploymentCopy)
 			return err
 		})
@@ -659,7 +659,7 @@ func (nlc *NsqLookupdController) updateNsqLookupdStatus(nl *nsqv1alpha1.NsqLooku
 		// You can use DeepCopy() to make a deep copy of original object and modify this copy
 		// Or create a copy manually for better performance
 		nlCopy := nlOld.DeepCopy()
-		nlCopy.Status.AvailableReplicas = *nlOld.Spec.Replicas
+		nlCopy.Status.AvailableReplicas = nlOld.Spec.Replicas
 		// If the CustomResourceSubresources feature gate is not enabled,
 		// we must use Update instead of UpdateStatus to update the Status block of the NsqLookupd resource.
 		// UpdateStatus will not allow changes to the Spec of the resource,
@@ -862,7 +862,7 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: nl.Spec.Replicas,
+			Replicas: &nl.Spec.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},

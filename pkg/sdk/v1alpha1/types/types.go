@@ -29,19 +29,19 @@ import (
 )
 
 type NsqdConfigRequest struct {
-	Name                   string
-	Namespace              string
-	MessageAvgSize         int
-	MemoryOverSalePercent  *int
-	TopicMemoryQueueSize   *int
-	ChannelMemoryQueueSize *int
+	Name                  string
+	Namespace             string
+	MessageAvgSize        int32
+	MemoryQueueSize       int32
+	MemoryOverSalePercent int32
+	ChannelCount          int32
 
 	DataPath               *string
-	MaxBodySize            *int
-	MaxChannelConsumers    *int
-	MaxMsgSize             *int
+	MaxBodySize            *int32
+	MaxChannelConsumers    *int32
+	MaxMsgSize             *int32
 	MaxOutputBufferTimeout *time.Duration
-	SyncEvery              *int
+	SyncEvery              *int32
 	SyncTimeout            *time.Duration
 	StatsdMemStats         *bool
 	StatsdInterval         *time.Duration
@@ -53,39 +53,31 @@ type NsqdConfigRequest struct {
 	WaitTimeout *time.Duration
 }
 
-func NewNsqdConfigRequest(name string, namespace string, messageAvgSize int) *NsqdConfigRequest {
+func NewNsqdConfigRequest(name string, namespace string, messageAvgSize int32, memoryQueueSize int32,
+	memoryOverSalePercent int32, channelCount int32) *NsqdConfigRequest {
 	return &NsqdConfigRequest{
-		Name:           name,
-		Namespace:      namespace,
-		MessageAvgSize: messageAvgSize,
+		Name:                  name,
+		Namespace:             namespace,
+		MessageAvgSize:        messageAvgSize,
+		MemoryQueueSize:       memoryQueueSize,
+		MemoryOverSalePercent: memoryOverSalePercent,
+		ChannelCount:          channelCount,
 	}
-}
-
-func (ndcr *NsqdConfigRequest) SetMemoryOverSalePercent(memoryOverSalePercent int) {
-	ndcr.MemoryOverSalePercent = &memoryOverSalePercent
-}
-
-func (ndcr *NsqdConfigRequest) SetTopicMemoryQueueSize(topicMemoryQueueSize int) {
-	ndcr.TopicMemoryQueueSize = &topicMemoryQueueSize
-}
-
-func (ndcr *NsqdConfigRequest) SetChannelMemoryQueueSize(channelMemoryQueueSize int) {
-	ndcr.ChannelMemoryQueueSize = &channelMemoryQueueSize
 }
 
 func (ndcr *NsqdConfigRequest) SetDataPath(dataPath string) {
 	ndcr.DataPath = &dataPath
 }
 
-func (ndcr *NsqdConfigRequest) SetMaxBodySize(maxBodySize int) {
+func (ndcr *NsqdConfigRequest) SetMaxBodySize(maxBodySize int32) {
 	ndcr.MaxBodySize = &maxBodySize
 }
 
-func (ndcr *NsqdConfigRequest) SetMaxChannelConsumers(maxChannelConsumers int) {
+func (ndcr *NsqdConfigRequest) SetMaxChannelConsumers(maxChannelConsumers int32) {
 	ndcr.MaxChannelConsumers = &maxChannelConsumers
 }
 
-func (ndcr *NsqdConfigRequest) SetMaxMsgSize(maxMsgSize int) {
+func (ndcr *NsqdConfigRequest) SetMaxMsgSize(maxMsgSize int32) {
 	ndcr.MaxMsgSize = &maxMsgSize
 }
 
@@ -93,7 +85,7 @@ func (ndcr *NsqdConfigRequest) SetMaxOutputBufferTimeout(maxOutputBufferTimeout 
 	ndcr.MaxOutputBufferTimeout = &maxOutputBufferTimeout
 }
 
-func (ndcr *NsqdConfigRequest) SetSyncEvery(syncEvery int) {
+func (ndcr *NsqdConfigRequest) SetSyncEvery(syncEvery int32) {
 	ndcr.SyncEvery = &syncEvery
 }
 
@@ -129,15 +121,79 @@ func (ndcr *NsqdConfigRequest) SetWaitTimeout(waitTimeout time.Duration) {
 	ndcr.WaitTimeout = &waitTimeout
 }
 
+func (ndcr *NsqdConfigRequest) GetMessageAvgSize() int32 {
+	return ndcr.MessageAvgSize
+}
+
+func (ndcr *NsqdConfigRequest) GetChannelCount() int32 {
+	return ndcr.ChannelCount
+}
+
+func (ndcr *NsqdConfigRequest) GetMemoryOverSalePercent() int32 {
+	return ndcr.MemoryOverSalePercent
+}
+
+func (ndcr *NsqdConfigRequest) GetMemoryQueueSize() int32 {
+	return ndcr.MemoryQueueSize
+}
+
+func (ndcr *NsqdConfigRequest) GetDataPath() string {
+	return *ndcr.DataPath
+}
+
+func (ndcr *NsqdConfigRequest) GetMaxBodySize() int32 {
+	return *ndcr.MaxBodySize
+}
+
+func (ndcr *NsqdConfigRequest) GetMaxChannelConsumers() int32 {
+	return *ndcr.MaxChannelConsumers
+}
+
+func (ndcr *NsqdConfigRequest) GetMaxMsgSize() int32 {
+	return *ndcr.MaxMsgSize
+}
+
+func (ndcr *NsqdConfigRequest) GetMaxOutputBufferTimeout() time.Duration {
+	return *ndcr.MaxOutputBufferTimeout
+}
+
+func (ndcr *NsqdConfigRequest) GetSyncEvery() int32 {
+	return *ndcr.SyncEvery
+}
+
+func (ndcr *NsqdConfigRequest) GetSyncTimeout() time.Duration {
+	return *ndcr.SyncTimeout
+}
+
+func (ndcr *NsqdConfigRequest) GetStatsdMemStats() bool {
+	return *ndcr.StatsdMemStats
+}
+
+func (ndcr *NsqdConfigRequest) GetStatsdInterval() time.Duration {
+	return *ndcr.StatsdInterval
+}
+
+func (ndcr *NsqdConfigRequest) GetSnappy() bool {
+	return *ndcr.Snappy
+}
+
+func (ndcr *NsqdConfigRequest) GetMaxRequeueTimeout() time.Duration {
+	return *ndcr.MaxRequeueTimeout
+}
+
+func (ndcr *NsqdConfigRequest) GetMsgTimeout() time.Duration {
+	return *ndcr.MsgTimeout
+}
+
+func (ndcr *NsqdConfigRequest) GetMaxHeartbeatInterval() time.Duration {
+	return *ndcr.MaxHeartbeatInterval
+}
+
+func (ndcr *NsqdConfigRequest) GetWaitTimeout() time.Duration {
+	return *ndcr.WaitTimeout
+}
+
 func (ndcr *NsqdConfigRequest) ApplyDefaults() {
-	if ndcr.TopicMemoryQueueSize == nil {
-		ndcr.TopicMemoryQueueSize = &topicMemoryQueueSize
-	}
-
-	if ndcr.ChannelMemoryQueueSize == nil {
-		ndcr.ChannelMemoryQueueSize = &channelMemoryQueueSize
-	}
-
 	if ndcr.DataPath == nil {
 		ndcr.DataPath = &nsqdCommandDataPath
 	}
@@ -190,10 +246,6 @@ func (ndcr *NsqdConfigRequest) ApplyDefaults() {
 		ndcr.MaxHeartbeatInterval = &nsqdCommandMaxHeartbeatInterval
 	}
 
-	if ndcr.MemoryOverSalePercent == nil {
-		ndcr.MemoryOverSalePercent = &nsqdMemoryOverSalePercent
-	}
-
 	if ndcr.WaitTimeout == nil {
 		ndcr.WaitTimeout = &waitTimeout
 	}
@@ -228,11 +280,11 @@ func (ndcr *NsqdConfigRequest) assembleNsqdCommandArguments() string {
 		"-snappy=%v "+
 		"-sync-every=%v "+
 		"-sync-timeout=%v "+
-		"-data-path=%v", *ndcr.StatsdInterval, *ndcr.StatsdMemStats,
+		"-data-path=%v", ndcr.GetStatsdInterval(), ndcr.GetStatsdMemStats(),
 		ndcr.Name, ndcr.Name, constant.NsqdHttpPort, constant.NsqdTcpPort,
-		*ndcr.MaxRequeueTimeout, *ndcr.TopicMemoryQueueSize, *ndcr.MaxMsgSize,
-		*ndcr.MaxBodySize, *ndcr.MaxHeartbeatInterval, *ndcr.MsgTimeout, *ndcr.Snappy,
-		*ndcr.SyncEvery, *ndcr.SyncTimeout, *ndcr.DataPath)
+		ndcr.GetMaxRequeueTimeout(), ndcr.GetMemoryQueueSize(), ndcr.GetMaxMsgSize(),
+		ndcr.GetMaxBodySize(), ndcr.GetMaxHeartbeatInterval(), ndcr.GetMsgTimeout(), ndcr.GetSnappy(),
+		ndcr.GetSyncEvery(), ndcr.GetSyncTimeout(), ndcr.GetDataPath())
 }
 
 type NsqCreateRequest struct {
