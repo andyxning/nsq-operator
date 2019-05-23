@@ -28,35 +28,38 @@ import (
 func main() {
 	var name string
 	var namespace string
-	var snappy bool
+	var messageAvgSize int32
+	var memoryQueueSize int32
+	var memoryOverSalePercent int32
+	var channelCount int32 = 2
 
 	common.RegisterFlags()
 
 	pflag.StringVar(&name, "name", "solo", "Cluster name")
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
-	pflag.BoolVar(&snappy, "snappy", true, "Consumer snappy compression enabled")
-
-	messageAvgSize := 1024
+	pflag.Int32Var(&messageAvgSize, "message_avg_size", 1204, "Average message size")
+	pflag.Int32Var(&memoryQueueSize, "memory_queue_size", 10000, "Memory queue size")
+	pflag.Int32Var(&memoryOverSalePercent, "memory_oversale_percent", 50, "Memory oversale percent")
+	pflag.Int32Var(&channelCount, "channel_count", 1, "Channel count")
 
 	common.Parse()
 
-	kubeClient, _, err := common.InitClients()
+	_, nsqClient, err := common.InitClients()
 	if err != nil {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize)
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
 	ndcr.ApplyDefaults()
-	ndcr.SetSnappy(snappy)
 
 	// Customize wait timeout
 	//wt := 180 * time.Second
 	//ndcr.SetWaitTimeout(wt)
 
-	err = sdkv1alpha1.AdjustNsqdConfig(kubeClient, ndcr)
+	err = sdkv1alpha1.AdjustNsqdMemoryResources(nsqClient, ndcr)
 	if err != nil {
-		klog.Fatalf("Update nsqd %s/%s config to %#v error: %v", ndcr.Namespace, ndcr.Name, ndcr.AssembleNsqdConfigMap([]string{}).Data, err)
+		klog.Fatalf("Update nsqd %s/%s config to %s error: %v", ndcr.Namespace, ndcr.Name, ndcr.String(), err)
 	}
 
-	klog.Infof("Update nsqd %s/%s config to %#v success", ndcr.Namespace, ndcr.Name, ndcr.AssembleNsqdConfigMap([]string{}).Data)
+	klog.Infof("Update nsqd %s/%s config to %s success", ndcr.Namespace, ndcr.Name, ndcr.String())
 }

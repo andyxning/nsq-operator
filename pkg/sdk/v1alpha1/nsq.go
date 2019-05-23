@@ -977,3 +977,62 @@ func AdjustNsqdConfig(kubeClient *kubernetes.Clientset, ndcr *types.NsqdConfigRe
 
 	return nil
 }
+
+func AdjustNsqdMemoryResources(nsqClient *versioned.Clientset, ndcr *types.NsqdConfigRequest) error {
+	klog.Infof("Update nsqd %s/%s config to %s", ndcr.Namespace, ndcr.Name, ndcr.String())
+	ctx, cancel := context.WithTimeout(context.Background(), *ndcr.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		nsqd, err := nsqClient.NsqV1alpha1().Nsqds(ndcr.Namespace).Get(ndcr.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("Failed to get nsqd %s/%s: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		nsqdCopy := nsqd.DeepCopy()
+		nsqdCopy.Spec.MessageAvgSize = ndcr.GetMessageAvgSize()
+		nsqdCopy.Spec.MemoryQueueSize = ndcr.GetMemoryQueueSize()
+		nsqdCopy.Spec.MemoryOverSalePercent = ndcr.GetMemoryOverSalePercent()
+		nsqdCopy.Spec.ChannelCount = ndcr.GetChannelCount()
+
+		_, err = nsqClient.NsqV1alpha1().Nsqds(ndcr.Namespace).Update(nsqdCopy)
+		if err != nil {
+			klog.Errorf("Update nsqd %s/%s error: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		klog.Infof("Update nsqd %s/%s success", ndcr.Namespace, ndcr.Name)
+		cancel()
+	}, constant.ResourceUpdateRetryPeriod)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for waiting nsqd %s/%s spec change", ndcr.Namespace, ndcr.Name)
+		return ctx.Err()
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), *ndcr.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		nsqd, err := nsqClient.NsqV1alpha1().Nsqds(ndcr.Namespace).Get(ndcr.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("Failed to get nsqd %s/%s: %v", ndcr.Namespace, ndcr.Name, err)
+			return
+		}
+
+		if !(nsqd.Status.MessageAvgSize == ndcr.MessageAvgSize &&
+			nsqd.Status.MemoryQueueSize == ndcr.MemoryQueueSize &&
+			nsqd.Status.MemoryOverSalePercent == ndcr.MemoryOverSalePercent &&
+			nsqd.Status.ChannelCount == ndcr.ChannelCount) {
+			klog.Errorf("Waiting for nsqd %s/%s status reaches its spec", ndcr.Namespace, ndcr.Name)
+			return
+		}
+
+		klog.Infof("Update nsqd %s/%s success", ndcr.Namespace, ndcr.Name)
+		cancel()
+	}, constant.NsqdStatusCheckPeriod)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for waiting nsqd %s/%s reaces its spec", ndcr.Namespace, ndcr.Name)
+		return ctx.Err()
+	}
+
+	return nil
+}

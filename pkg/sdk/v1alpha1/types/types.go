@@ -65,6 +65,12 @@ func NewNsqdConfigRequest(name string, namespace string, messageAvgSize int32, m
 	}
 }
 
+func (ndcr *NsqdConfigRequest) String() string {
+	return fmt.Sprintf("Name: %v, Namespace: %v, MessageAvgSize: %v, MemoryQueueSize: %v, MemoryOverSalePercent: %v, "+
+		"ChannelCount: %v", ndcr.Name, ndcr.Namespace, ndcr.MessageAvgSize, ndcr.MemoryQueueSize, ndcr.MemoryOverSalePercent,
+		ndcr.ChannelCount)
+}
+
 func (ndcr *NsqdConfigRequest) SetDataPath(dataPath string) {
 	ndcr.DataPath = &dataPath
 }

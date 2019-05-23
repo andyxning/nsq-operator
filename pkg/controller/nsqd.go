@@ -586,7 +586,7 @@ func (ndc *NsqdController) syncHandler(key string) error {
 			for _, pod := range podList.Items {
 				if !reflect.DeepEqual(pod.Spec.Containers[0].Resources, newResources) {
 					klog.Infof("New resources does not match for nsqd %s/%s. Pod: %v. "+
-						"Old resources: %v, new resources: %v",
+						"Old resources: %#v, new resources: %#v",
 						nd.Namespace, nd.Name, pod.Name, pod.Spec.Containers[0].Resources, newResources)
 					return
 				}

@@ -36,7 +36,10 @@ func main() {
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
 	pflag.BoolVar(&snappy, "snappy", true, "Consumer snappy compression enabled")
 
-	messageAvgSize := 1024
+	var messageAvgSize int32 = 1024 // 1ki
+	var memoryQueueSize int32 = 10000
+	var memoryOverSalePercent int32 = 50
+	var channelCount int32 = 0
 
 	common.Parse()
 
@@ -45,7 +48,7 @@ func main() {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize)
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
 	ndcr.ApplyDefaults()
 	ndcr.SetSnappy(snappy)
 
