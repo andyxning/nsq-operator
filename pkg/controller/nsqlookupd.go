@@ -98,7 +98,7 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 	// Add nsq-controller types to the default Kubernetes Scheme so Events can be
 	// logged for nsq-controller types.
 	utilruntime.Must(nsqscheme.AddToScheme(scheme.Scheme))
-	klog.Info("Creating event broadcaster")
+	klog.Info("Creating event broadcaster for nsqlookupd controller")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClientSet.CoreV1().Events("")})
@@ -118,8 +118,8 @@ func NewNsqLookupdController(opts *options.Options, kubeClientSet kubernetes.Int
 		recorder:          recorder,
 	}
 
-	klog.Info("Setting up event handlers")
-	// Set up an event handler for when Nsq resources change
+	klog.Info("Setting up event handlers for nsqlookupd controller")
+	// Set up an event handler for when NsqLookupd resources change
 	nsqInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueNsqLookupd,
 		UpdateFunc: func(old, new interface{}) {

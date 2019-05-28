@@ -29,6 +29,7 @@ type NsqV1alpha1Interface interface {
 	NsqAdminsGetter
 	NsqLookupdsGetter
 	NsqdsGetter
+	NsqdScalesGetter
 }
 
 // NsqV1alpha1Client is used to interact with features provided by the nsq.io group.
@@ -46,6 +47,10 @@ func (c *NsqV1alpha1Client) NsqLookupds(namespace string) NsqLookupdInterface {
 
 func (c *NsqV1alpha1Client) Nsqds(namespace string) NsqdInterface {
 	return newNsqds(c, namespace)
+}
+
+func (c *NsqV1alpha1Client) NsqdScales(namespace string) NsqdScaleInterface {
+	return newNsqdScales(c, namespace)
 }
 
 // NewForConfig creates a new NsqV1alpha1Client for the given config.

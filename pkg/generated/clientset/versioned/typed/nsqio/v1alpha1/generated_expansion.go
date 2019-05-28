@@ -23,3 +23,5 @@ type NsqAdminExpansion interface{}
 type NsqLookupdExpansion interface{}
 
 type NsqdExpansion interface{}
+
+type NsqdScaleExpansion interface{}

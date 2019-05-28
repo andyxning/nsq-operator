@@ -21,5 +21,5 @@ const (
 	NsqAdminKind   = "NsqAdmin"
 	NsqdKind       = "Nsqd"
 	NsqLookupdKind = "NsqLookupd"
-	NsqKind        = "Nsq"
+	NsqdScaleKind  = "NsqdScale"
 )

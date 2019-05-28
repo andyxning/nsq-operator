@@ -27,6 +27,9 @@ nsq-operator-image:
 	docker run --rm -v "$(shell pwd)":/go/src/${PKG_PREFIX} -w /go/src/${PKG_PREFIX} golang:${GOLANG_VERSION} make build
 	docker build --no-cache --build-arg GOLANG_VERSION=${GOLANG_VERSION} -t nsq-operator:${NSQ_OPERATOR_VERSION} -f Dockerfile .
 
+qps-reporter: clean
+	go build -o qps-reporter ${PKG_PREFIX}/cmd/qps-reporter
+
 gen-code:
 	./hack/update-codegen.sh
 
@@ -37,6 +40,6 @@ verify-codegen:
 	./hack/verify-codegen.sh
 
 clean:
-	rm -f nsq-operator
+	rm -f nsq-operator qps-reporter
 
-.PHONY: clean test fmt vet images build gen-code verify-codegen update-gen-tool nsq-operator-image
+.PHONY: clean test fmt vet images build gen-code verify-codegen update-gen-tool nsq-operator-image qps-reporter

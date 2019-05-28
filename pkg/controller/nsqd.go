@@ -99,7 +99,7 @@ func NewNsqdController(opts *options.Options, kubeClientSet kubernetes.Interface
 	// Add nsq-controller types to the default Kubernetes Scheme so Events can be
 	// logged for nsq-controller types.
 	utilruntime.Must(nsqscheme.AddToScheme(scheme.Scheme))
-	klog.Info("Creating event broadcaster")
+	klog.Info("Creating event broadcaster for nsqd controller")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClientSet.CoreV1().Events("")})
@@ -119,8 +119,8 @@ func NewNsqdController(opts *options.Options, kubeClientSet kubernetes.Interface
 		recorder:           recorder,
 	}
 
-	klog.Info("Setting up event handlers")
-	// Set up an event handler for when NsqAdmin resources change
+	klog.Info("Setting up event handlers for nsqd controller")
+	// Set up an event handler for when Nsqd resources change
 	nsqInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueNsqd,
 		UpdateFunc: func(old, new interface{}) {
@@ -197,7 +197,7 @@ func (ndc *NsqdController) Run(threads int, stopCh <-chan struct{}) error {
 	}
 
 	klog.Info("Starting workers")
-	// Launch workers to process NsqAdmin resources
+	// Launch workers to process Nsqd resources
 	for i := 0; i < threads; i++ {
 		go wait.Until(ndc.runWorker, time.Second, stopCh)
 	}
@@ -251,7 +251,7 @@ func (ndc *NsqdController) processNextWorkItem() bool {
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
-		// NsqAdmin resource to be synced.
+		// Nsqd resource to be synced.
 		if err := ndc.syncHandler(key); err != nil {
 			// Put the item back on the workqueue to handle any transient errors.
 			ndc.workqueue.AddRateLimited(key)
@@ -273,7 +273,7 @@ func (ndc *NsqdController) processNextWorkItem() bool {
 }
 
 // syncHandler compares the actual state with the desired, and attempts to
-// converge the two. It then updates the Status block of the NsqAdmin resource
+// converge the two. It then updates the Status block of the Nsqd resource
 // with the current status of the resource.
 func (ndc *NsqdController) syncHandler(key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
@@ -360,7 +360,7 @@ func (ndc *NsqdController) syncHandler(key string) error {
 	if !metav1.IsControlledBy(statefulSet, nd) {
 		statefulSet.GetCreationTimestamp()
 		msg := fmt.Sprintf(constant.StatefulSetResourceNotOwnedByNsqd, statefulSet.Name)
-		ndc.recorder.Event(nd, corev1.EventTypeWarning, nsqerror.ErrResourceNotOwnedByNsqAdmin, msg)
+		ndc.recorder.Event(nd, corev1.EventTypeWarning, nsqerror.ErrResourceNotOwnedByNsqd, msg)
 		return fmt.Errorf(msg)
 	}
 
@@ -626,7 +626,7 @@ func (ndc *NsqdController) updateNsqdStatus(nd *nsqv1alpha1.Nsqd, statefulSet *a
 		ndCopy.Status.MemoryQueueSize = nd.Spec.MemoryQueueSize
 		ndCopy.Status.ChannelCount = nd.Spec.ChannelCount
 		// If the CustomResourceSubresources feature gate is not enabled,
-		// we must use Update instead of UpdateStatus to update the Status block of the NsqAdmin resource.
+		// we must use Update instead of UpdateStatus to update the Status block of the Nsqd resource.
 		// UpdateStatus will not allow changes to the Spec of the resource,
 		// which is ideal for ensuring nothing other than resource status has been updated.
 		_, err = ndc.nsqClientSet.NsqV1alpha1().Nsqds(nd.Namespace).Update(ndCopy)
@@ -767,7 +767,7 @@ func (ndc *NsqdController) computeNsqdMemoryResource(nd *nsqv1alpha1.Nsqd) (requ
 
 // newStatefulSet creates a new StatefulSet for a Nsqd resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
-// the NsqAdmin resource that 'owns' it.
+// the Nsqd resource that 'owns' it.
 func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash string) *appsv1.StatefulSet {
 	memRequest, memLimit := ndc.computeNsqdMemoryResource(nd)
 
@@ -879,18 +879,80 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 								FailureThreshold:    3,
 							},
 						},
-					},
-					Volumes: []corev1.Volume{
 						{
-							Name: common.NsqdConfigMapName(nd.Name),
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: common.NsqdConfigMapName(nd.Name),
+							Name:  "qps-reporter",
+							Image: nd.Spec.Image,
+							Env: []corev1.EnvVar{
+								{
+									Name: "POD_HOSTNAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
 									},
 								},
+								{
+									Name: "POD_NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name:  constant.ClusterNameEnv,
+									Value: nd.Name,
+								},
+							},
+							Command: []string{"qps-reporter", "--alsologtostderr=false", fmt.Sprintf("--log_dir=%s", common.QpsReporterLogMountPath(nd.Name))},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      constant.LogVolumeName,
+									MountPath: common.QpsReporterLogMountPath(nd.Name),
+								},
+							},
+							ImagePullPolicy: corev1.PullAlways,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    ndc.opts.QpsReporterCPULimitResource,
+									corev1.ResourceMemory: ndc.opts.QpsReporterMemoryLimitResource,
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    ndc.opts.QpsReporterCPURequestResource,
+									corev1.ResourceMemory: ndc.opts.QpsReporterMemoryRequestResource,
+								},
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(constant.NsqdScaleHttpPort),
+										Scheme: corev1.URISchemeHTTP,
+									},
+								},
+								InitialDelaySeconds: 3,
+								TimeoutSeconds:      2,
+								PeriodSeconds:       30,
+								SuccessThreshold:    1,
+								FailureThreshold:    3,
+							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(constant.NsqdScaleHttpPort),
+										Scheme: corev1.URISchemeHTTP,
+									},
+								},
+								InitialDelaySeconds: 3,
+								TimeoutSeconds:      2,
+								PeriodSeconds:       30,
+								SuccessThreshold:    1,
+								FailureThreshold:    3,
 							},
 						},
+					},
+					Volumes: []corev1.Volume{
 						{
 							Name: constant.LogVolumeName,
 							VolumeSource: corev1.VolumeSource{
@@ -900,7 +962,6 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 							},
 						},
 					},
-					TerminationGracePeriodSeconds: &ndc.opts.NsqdTerminationGracePeriodSeconds,
 				},
 			},
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
