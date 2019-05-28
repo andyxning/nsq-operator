@@ -35,6 +35,7 @@ type Options struct {
 	InstanceName       string
 	HttpRequestTimeout time.Duration
 	UpdatePeriod       time.Duration
+	PreservedQpsCount  int
 	HttpApiAddress     string
 
 	DryRun bool
@@ -57,10 +58,11 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.NsqdApiAddress, "nsqd-api-address", "0.0.0.0:4151", "Nsqd http api address")
 	pflag.StringVar(&o.HttpApiAddress, "http-api-address", "0.0.0.0:4131", "qps-reporter http api address")
 	pflag.StringVar(&o.Topic, "topic", os.Getenv("NSQ_CLUSTER"), "Topic name")
-	pflag.StringVar(&o.InstanceName, "instance-name", os.Getenv("POD_HOSTNAME"), "Instance name")
+	pflag.StringVar(&o.InstanceName, "instance-name", os.Getenv("POD_NAME"), "Instance name")
 	pflag.StringVar(&o.Namespace, "namespace", os.Getenv("POD_NAMESPACE"), "Pod namespace")
 	pflag.DurationVar(&o.HttpRequestTimeout, "http-request-timeout", 2*time.Second, "Http request timeout")
 	pflag.DurationVar(&o.UpdatePeriod, "update-period", 10*time.Second, "Message count check/qps update period")
+	pflag.IntVar(&o.PreservedQpsCount, "preserved-qps-count", 3, "Preserved qps record count per nsqd instance")
 
 	pflag.BoolVar(&o.DryRun, "dry-run", false, "Print qps update info to stdout instead of updating nsqdscale resource")
 

@@ -53,6 +53,16 @@ type NsqdStatus struct {
 	ChannelCount          int32 `json:"channelCount"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// NsqdList is a list of Nsqd resources
+type NsqdList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Nsqd `json:"items"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -74,7 +84,9 @@ type NsqdScaleSpec struct {
 
 // NsqdScaleStatus is the status for a NsqdScale resource
 type NsqdScaleStatus struct {
-	Qpses map[string]Qps `json:"qpses"`
+	LastScaleUpTime   metav1.Time      `json:"lastScaleUpTime"`
+	LastScaleDownTime metav1.Time      `json:"lastScaleDownTime"`
+	Qpses             map[string][]Qps `json:"qpses"`
 }
 
 type Qps struct {
@@ -90,16 +102,6 @@ type NsqdScaleList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []NsqdScale `json:"items"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// NsqdList is a list of Nsqd resources
-type NsqdList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []Nsqd `json:"items"`
 }
 
 // +genclient

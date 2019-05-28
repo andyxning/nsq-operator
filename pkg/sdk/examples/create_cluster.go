@@ -51,6 +51,9 @@ func main() {
 	var memoryQueueSize int32 = 10000
 	var memoryOverSalePercent int32 = 50
 	var channelCount int32 = 0
+	var qpsThreshold int32 = 40000 // 40k
+	var minimum int32 = 1
+	var maximum int32 = 4
 
 	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
 	ndcr.ApplyDefaults()
@@ -68,6 +71,12 @@ func main() {
 		ChannelCount:          ndcr.GetChannelCount(),
 	}
 
+	ndss := v1alpha1.NsqdScaleSpec{
+		QpsThreshold: qpsThreshold,
+		Minimum:      minimum,
+		Maximum:      maximum,
+	}
+
 	nls := v1alpha1.NsqLookupdSpec{
 		Image:         "dockerops123/nsqlookupd:1.1.0",
 		Replicas:      nsqLookupdReplicas,
@@ -80,7 +89,7 @@ func main() {
 		LogMappingDir: fmt.Sprintf("/var/log/%s", name),
 	}
 
-	nr := types.NewNsqCreateRequest(ndcr, nds, nls, nas)
+	nr := types.NewNsqCreateRequest(ndcr, nds, nls, ndss, nas)
 
 	err = sdkv1alpha1.CreateCluster(kubeClient, nsqClient, nr)
 	if err != nil {

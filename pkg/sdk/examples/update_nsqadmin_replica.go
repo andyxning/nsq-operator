@@ -43,7 +43,7 @@ func main() {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	nasr := types.NewNsqAdminScaleRequest(name, namespace, replicas)
+	nasr := types.NewNsqAdminReplicaUpdateRequest(name, namespace, replicas)
 
 	// Customize wait timeout
 	//wt := 180 * time.Second

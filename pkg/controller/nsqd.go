@@ -341,7 +341,7 @@ func (ndc *NsqdController) syncHandler(key string) error {
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
 			nsqdSs, err := ndc.kubeClientSet.AppsV1().StatefulSets(nd.Namespace).Get(common.NsqdStatefulSetName(nd.Name), metav1.GetOptions{})
 			if err != nil {
-				klog.Errorf("Failed to get nsqd %s/%s statefulset", nd.Namespace, nd.Name)
+				klog.Errorf("Failed to get nsqd %s/%s statefulset. Error: %v", nd.Namespace, nd.Name, err)
 				return
 			}
 
@@ -884,7 +884,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 							Image: nd.Spec.Image,
 							Env: []corev1.EnvVar{
 								{
-									Name: "POD_HOSTNAME",
+									Name: "POD_NAME",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.name",
@@ -904,7 +904,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 									Value: nd.Name,
 								},
 							},
-							Command: []string{"qps-reporter", "--alsologtostderr=false", fmt.Sprintf("--log_dir=%s", common.QpsReporterLogMountPath(nd.Name))},
+							Command: []string{"qps-reporter", "--alsologtostderr=false", "--logtostderr=false", fmt.Sprintf("--log_dir=%s", common.QpsReporterLogDir(nd.Name))},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      constant.LogVolumeName,
@@ -954,6 +954,16 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 					},
 					Volumes: []corev1.Volume{
 						{
+							Name: common.NsqdConfigMapName(nd.Name),
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: common.NsqdConfigMapName(nd.Name),
+									},
+								},
+							},
+						},
+						{
 							Name: constant.LogVolumeName,
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
@@ -962,6 +972,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 							},
 						},
 					},
+					TerminationGracePeriodSeconds: &ndc.opts.NsqdTerminationGracePeriodSeconds,
 				},
 			},
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,

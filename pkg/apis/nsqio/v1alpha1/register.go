@@ -50,6 +50,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&NsqLookupdList{},
 		&NsqAdmin{},
 		&NsqAdminList{},
+		&NsqdScale{},
+		&NsqdScaleList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

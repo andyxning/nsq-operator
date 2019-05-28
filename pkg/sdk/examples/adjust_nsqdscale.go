@@ -28,13 +28,17 @@ import (
 func main() {
 	var name string
 	var namespace string
-	var replicas int32
+	var minimum int32
+	var maximum int32
+	var qpsThreshold int32
 
 	common.RegisterFlags()
 
 	pflag.StringVar(&name, "name", "solo", "Cluster name")
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
-	pflag.Int32Var(&replicas, "replicas", 2, "Replicas")
+	pflag.Int32Var(&qpsThreshold, "qps-threshold", 40000, "Qps threshold before autoscaling")
+	pflag.Int32Var(&minimum, "minimum", 1, "Minimum nsqd instances")
+	pflag.Int32Var(&maximum, "maximum", 4, "Maximum nsqd instances")
 
 	common.Parse()
 
@@ -43,16 +47,16 @@ func main() {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	nlsr := types.NewNsqLookupdScaleRequest(name, namespace, replicas)
+	ndsur := types.NewNsqdScaleUpdateRequest(name, namespace, qpsThreshold, minimum, maximum)
 
 	// Customize wait timeout
 	//wt := 180 * time.Second
-	//nlsr.SetWaitTimeout(wt)
+	//ndsur.SetWaitTimeout(wt)
 
-	err = sdkv1alpha1.ScaleNsqLookupd(nsqClient, nlsr)
+	err = sdkv1alpha1.AdjustNsqdScale(nsqClient, ndsur)
 	if err != nil {
-		klog.Fatalf("Scale nsqlookupd %s/%s to replicas %d error: %v", nlsr.Namespace, nlsr.Name, nlsr.Replicas, err)
+		klog.Fatalf("Update nsqdscale %s/%s to %#v error: %v", ndsur.Namespace, ndsur.Name, ndsur, err)
 	}
 
-	klog.Infof("Scale nsqlookupd %s/%s to replicas %d success", nlsr.Namespace, nlsr.Name, nlsr.Replicas)
+	klog.Infof("Update nsqdscale %s/%s to %#v success", ndsur.Namespace, ndsur.Name, ndsur)
 }

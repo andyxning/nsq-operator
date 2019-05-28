@@ -124,3 +124,4 @@ venv.bak/
 /cmd/nsq-operator/nsq-operator
 /nsq-operator
 /qps-reporter
+/images/qps-reporter

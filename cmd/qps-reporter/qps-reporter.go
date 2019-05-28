@@ -33,6 +33,7 @@ import (
 	"github.com/andyxning/nsq-operator/cmd/qps-reporter/types"
 	"github.com/andyxning/nsq-operator/pkg/apis/nsqio/v1alpha1"
 	"github.com/andyxning/nsq-operator/pkg/signal"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -114,6 +115,7 @@ func main() {
 			messageCount, err := queryNsqdMessageCount(opts)
 			if err != nil {
 				klog.Errorf("Ignore updating qps for topic %q", opts.Topic)
+				break
 			}
 
 			if !isFirstStart {
@@ -125,7 +127,7 @@ func main() {
 				qps := int64(math.Ceil(float64(countDiff) / float64(timeDiff/time.Second)))
 				klog.Infof("Topic %q, counted qps: %v", opts.Topic, qps)
 				if qps < 0 {
-					klog.Warningf("Ignore updating qps for topic %q. Message count diff is negative. Maybe nsqd has been restarted",
+					klog.Warningf("Ignore update qps for topic %q. Message count diff is negative. Maybe nsqd has been restarted",
 						opts.Topic)
 					break
 				}
@@ -135,7 +137,7 @@ func main() {
 					Qps:            qps,
 				}
 				if err := updateNsqdScaleStatus(nsqClient, nsqdQPS, opts); err != nil {
-					klog.Errorf("Updating nsqd scale status for %s/%s. qps: %+v. Error: %v",
+					klog.Errorf("Updating nsqd scale status for %s/%s error. qps: %+v. Error: %v",
 						opts.Namespace, opts.InstanceName, nsqdQPS, err)
 				} else {
 					klog.Infof("Updating nsqd scale status for %s/%s. qps: %+v",
@@ -207,16 +209,28 @@ func queryNsqdMessageCount(opts *options.Options) (messageCount uint64, err erro
 func updateNsqdScaleStatus(nsqclientset *nsqclientset.Clientset, qps v1alpha1.Qps, opts *options.Options) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		if opts.DryRun {
-			klog.Infof("Qps for nsqd scale %s/%s is: %+v", opts.Namespace, opts.Topic, qps)
+			klog.Infof("Qps for nsqdscale %s/%s is: %+v", opts.Namespace, opts.Topic, qps)
 			return nil
 		} else {
-			nds, err := nsqclientset.NsqV1alpha1().NsqdScales(opts.Namespace).Get(opts.InstanceName, metav1.GetOptions{})
+			nds, err := nsqclientset.NsqV1alpha1().NsqdScales(opts.Namespace).Get(opts.Topic, metav1.GetOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to get latest version of nsqdscale %s/%s: %v", opts.Namespace, opts.Topic, err)
+				if errors.IsNotFound(err) {
+					klog.Infof("Can not find nsqdscale for %s/%s. Ignore updates", opts.Namespace, opts.Topic)
+					return nil
+				} else {
+					return fmt.Errorf("failed to get latest version of nsqdscale %s/%s: %v", opts.Namespace, opts.Topic, err)
+				}
 			}
 
 			newNDS := nds.DeepCopy()
-			newNDS.Status.Qpses[opts.InstanceName] = qps
+			if newNDS.Status.Qpses == nil {
+				newNDS.Status.Qpses = make(map[string][]v1alpha1.Qps)
+			}
+
+			newNDS.Status.Qpses[opts.InstanceName] = append(newNDS.Status.Qpses[opts.InstanceName], qps)
+			if len(newNDS.Status.Qpses[opts.InstanceName]) > opts.PreservedQpsCount {
+				newNDS.Status.Qpses[opts.InstanceName] = newNDS.Status.Qpses[opts.InstanceName][1 : opts.PreservedQpsCount+1]
+			}
 
 			_, err = nsqclientset.NsqV1alpha1().NsqdScales(opts.Namespace).Update(newNDS)
 			return err
