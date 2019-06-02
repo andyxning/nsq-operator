@@ -17,7 +17,7 @@ test:
 	go test -timeout=1m -v -race $(shell go list ./... | grep -v "pkg/sdk/examples")
 
 build: clean
-	go build -ldflags="${ldflags}" -o nsq-operator ${PKG_PREFIX}/cmd/nsq-operator
+	CGO_ENABLED=0 go build -ldflags="${ldflags}" -o nsq-operator ${PKG_PREFIX}/cmd/nsq-operator
 
 images: ${nsq-images}
 .image-%:
@@ -28,7 +28,7 @@ nsq-operator-image:
 	docker build --no-cache --build-arg GOLANG_VERSION=${GOLANG_VERSION} -t nsq-operator:${NSQ_OPERATOR_VERSION} -f Dockerfile .
 
 qps-reporter: clean
-	go build -o qps-reporter ${PKG_PREFIX}/cmd/qps-reporter
+	CGO_ENABLED=0 go build -o qps-reporter ${PKG_PREFIX}/cmd/qps-reporter
 
 gen-code:
 	./hack/update-codegen.sh

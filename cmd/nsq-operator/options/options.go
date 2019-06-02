@@ -43,6 +43,7 @@ type Options struct {
 	NsqAdminControllerWorker   int
 	NsqLookupdControllerWorker int
 	NsqdControllerWorker       int
+	NsqdScaleControllerWorker  int
 
 	nsqAdminCPULimit      string
 	nsqAdminCPURequest    string
@@ -82,7 +83,9 @@ type Options struct {
 	QpsReporterMemoryLimitResource   resource.Quantity
 	QpsReporterMemoryRequestResource resource.Quantity
 
-	NsqdScaleValidDuration time.Duration
+	NsqdScaleValidDuration       time.Duration
+	NsqdScaleUpSilenceDuration   time.Duration
+	NsqdScaleDownSilenceDuration time.Duration
 
 	Version bool
 }
@@ -112,6 +115,7 @@ func (o *Options) MustRegisterFlags() {
 	pflag.IntVar(&o.NsqAdminControllerWorker, "nsqadmin-controller-worker", 8, "Worker number for nsqadmin controller")
 	pflag.IntVar(&o.NsqLookupdControllerWorker, "nsqlookupd-controller-worker", 8, "Worker number for nsqlookupd controller")
 	pflag.IntVar(&o.NsqdControllerWorker, "nsqd-controller-worker", 8, "Worker number for nsqd controller")
+	pflag.IntVar(&o.NsqdScaleControllerWorker, "nsqdscale-controller-worker", 16, "Worker number for nsqdscale controller")
 
 	pflag.Int64Var(&o.NsqAdminTerminationGracePeriodSeconds, "nsqadmin-termination-grace-period-seconds", 60, "Termination grace period seconds for nsqadmin resource object")
 	pflag.Int64Var(&o.NsqLookupdTerminationGracePeriodSeconds, "nsqlookupd-termination-grace-period-seconds", 60, "Termination grace period seconds for nsqlookupd resource object")
@@ -131,12 +135,14 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "300m", "CPU request resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdPVCStorageResource, "nsqd-pvc-storage-resource", "256Gi", "Storage resource value for a nsqd instance")
 
-	pflag.StringVar(&o.nsqLookupdMemoryLimit, "qps-reporter-mem-limit", "100Mi", "Memory limit resource value for a qps-reporter instance")
-	pflag.StringVar(&o.nsqLookupdCPULimit, "qps-reporter-cpu-limit", "100m", "CPU limit resource value for a qps-reporter instance")
-	pflag.StringVar(&o.nsqLookupdMemoryRequest, "qps-reporter-mem-request", "100Mi", "Memory request resource value for a qps-reporter instance")
-	pflag.StringVar(&o.nsqLookupdCPURequest, "qps-reporter-cpu-request", "100m", "CPU request resource value for a qps-reporter instance")
+	pflag.StringVar(&o.qpsReporterMemoryLimit, "qps-reporter-mem-limit", "100Mi", "Memory limit resource value for a qps-reporter instance")
+	pflag.StringVar(&o.qpsReporterCPULimit, "qps-reporter-cpu-limit", "100m", "CPU limit resource value for a qps-reporter instance")
+	pflag.StringVar(&o.qpsReporterMemoryRequest, "qps-reporter-mem-request", "100Mi", "Memory request resource value for a qps-reporter instance")
+	pflag.StringVar(&o.qpsReporterCPURequest, "qps-reporter-cpu-request", "100m", "CPU request resource value for a qps-reporter instance")
 
-	pflag.DurationVar(&o.NsqdScaleValidDuration, "nsqd-scale-valid-duration", 60*time.Second, "Time duration during which qps is valid and counted")
+	pflag.DurationVar(&o.NsqdScaleValidDuration, "nsqd-scale-valid-duration", 40*time.Second, "Time duration during which qps is valid and counted")
+	pflag.DurationVar(&o.NsqdScaleUpSilenceDuration, "nsqd-scale-up-silence-duration", 90*time.Second, "Time duration during which second scale up is not allowed")
+	pflag.DurationVar(&o.NsqdScaleDownSilenceDuration, "nsqd-scale-down-silence-duration", 90*time.Second, "Time duration during which second scale down is ont allowed")
 }
 
 func (o *Options) MustParse() {

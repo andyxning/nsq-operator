@@ -291,6 +291,31 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		return ctx.Err()
 	}
 
+	// Create nsqdscale
+	nsqdScale := ncr.AssembleNsqdScale()
+	klog.Infof("Create nsqdscale %s/%s", nsqdScale.Namespace, nsqdScale.Name)
+	_, err = nsqClient.NsqV1alpha1().NsqdScales(nsqdScale.Namespace).Create(nsqdScale)
+	if errors.IsAlreadyExists(err) {
+		klog.Infof("Nsqdscale %s/%s exists. Update it", nsqdScale.Namespace, nsqdScale.Name)
+		var old *v1alpha1.NsqdScale
+		old, err = nsqClient.NsqV1alpha1().NsqdScales(nsqdScale.Namespace).Get(nsqdScale.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("Get old nsqdscale %s/%s error: %v", nsqdScale.Namespace, nsqdScale.Name, err)
+			return err
+		}
+		klog.V(4).Infof("Old nsqdscale %s/%s: %#v", nsqdScale.Namespace, nsqdScale.Name, *old)
+
+		oldCopy := old.DeepCopy()
+		oldCopy.Spec = nsqdScale.Spec
+		klog.V(4).Infof("New nsqdscale %s/%s: %#v", nsqdScale.Namespace, nsqdScale.Name, *oldCopy)
+		_, err = nsqClient.NsqV1alpha1().NsqdScales(nsqdScale.Namespace).Update(oldCopy)
+	}
+
+	if err != nil {
+		klog.Errorf("Create nsqdscale error: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -481,10 +506,34 @@ func DeleteCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 		return ctx.Err()
 	}
 
+	err = nsqClient.NsqV1alpha1().NsqdScales(ndr.Namespace).Delete(ndr.Name, &metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Delete nsqdscale %s/%s error: %v", ndr.Namespace, ndr.Name, err)
+		return err
+	}
+
+	klog.Infof("Waiting for nsqdscale %s/%s to be deleted", ndr.Namespace, ndr.Name)
+	ctx, cancel = context.WithTimeout(context.Background(), *ndr.WaitTimeout)
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		_, err := nsqClient.NsqV1alpha1().NsqdScales(ndr.Namespace).Get(ndr.Name, metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			klog.Warningf("Get nsqdscale %s/%s error: %v", ndr.Namespace, ndr.Name, err)
+			return
+		}
+
+		cancel()
+		klog.Infof("Delete nsqdscale %s/%s success", ndr.Namespace, ndr.Name)
+	}, constant.ResourceUpdateRetryPeriod)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Delete nsqdscale %s/%s error: %v", ndr.Namespace, ndr.Name, ctx.Err())
+		return ctx.Err()
+	}
+
 	return nil
 }
 
-func ScaleNsqAdmin(nsqClient *versioned.Clientset, nasr *types.NsqAdminScaleRequest) error {
+func ScaleNsqAdmin(nsqClient *versioned.Clientset, nasr *types.NsqAdminReplicaUpdateRequest) error {
 	klog.Infof("Set nsqadmin %s/%s replicas to %d", nasr.Namespace, nasr.Name, nasr.Replicas)
 	ctx, cancel := context.WithTimeout(context.Background(), *nasr.WaitTimeout)
 
@@ -537,7 +586,7 @@ func ScaleNsqAdmin(nsqClient *versioned.Clientset, nasr *types.NsqAdminScaleRequ
 	return nil
 }
 
-func ScaleNsqLookupd(nsqClient *versioned.Clientset, nlsr *types.NsqLookupdScaleRequest) error {
+func ScaleNsqLookupd(nsqClient *versioned.Clientset, nlsr *types.NsqLookupdReplicaUpdateRequest) error {
 	klog.Infof("Set nsqlookupd %s/%s replicas to %d", nlsr.Namespace, nlsr.Name, nlsr.Replicas)
 	ctx, cancel := context.WithTimeout(context.Background(), *nlsr.WaitTimeout)
 
@@ -590,7 +639,7 @@ func ScaleNsqLookupd(nsqClient *versioned.Clientset, nlsr *types.NsqLookupdScale
 	return nil
 }
 
-func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdScaleRequest) error {
+func ScaleNsqd(nsqClient *versioned.Clientset, ndsr *types.NsqdReplicaUpdateRequest) error {
 	klog.Infof("Set nsqd %s/%s replicas to %d", ndsr.Namespace, ndsr.Name, ndsr.Replicas)
 	ctx, cancel := context.WithTimeout(context.Background(), *ndsr.WaitTimeout)
 
@@ -1031,6 +1080,39 @@ func AdjustNsqdMemoryResources(nsqClient *versioned.Clientset, ndcr *types.NsqdC
 
 	if ctx.Err() != context.Canceled {
 		klog.Errorf("Timeout for waiting nsqd %s/%s reaces its spec", ndcr.Namespace, ndcr.Name)
+		return ctx.Err()
+	}
+
+	return nil
+}
+
+func AdjustNsqdScale(nsqClient *versioned.Clientset, ndsur *types.NsqdScaleUpdateRequest) error {
+	klog.Infof("Update nsqdscale %s/%s to %+v", ndsur.Namespace, ndsur.Name, ndsur)
+	ctx, cancel := context.WithTimeout(context.Background(), *ndsur.WaitTimeout)
+
+	wait.UntilWithContext(ctx, func(ctx context.Context) {
+		nsqdScale, err := nsqClient.NsqV1alpha1().NsqdScales(ndsur.Namespace).Get(ndsur.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Warningf("Get nsqdscale %s/%s error: %v", ndsur.Namespace, ndsur.Name, err)
+			return
+		}
+
+		nsqdScaleCopy := nsqdScale.DeepCopy()
+		nsqdScaleCopy.Spec.QpsThreshold = ndsur.QpsThreshold
+		nsqdScaleCopy.Spec.Minimum = ndsur.Minimum
+		nsqdScaleCopy.Spec.Maximum = ndsur.Maximum
+		_, err = nsqClient.NsqV1alpha1().NsqdScales(ndsur.Namespace).Update(nsqdScaleCopy)
+		if err != nil {
+			klog.Errorf("Update nsqdscale %s/%s error: %v", ndsur.Namespace, ndsur.Name, err)
+			return
+		}
+
+		klog.Infof("Update nsqdscale %s/%s success", ndsur.Namespace, ndsur.Name)
+		cancel()
+	}, constant.ResourceUpdateRetryPeriod)
+
+	if ctx.Err() != context.Canceled {
+		klog.Errorf("Timeout for updating nsqdscale %s/%s", ndsur.Namespace, ndsur.Name)
 		return ctx.Err()
 	}
 

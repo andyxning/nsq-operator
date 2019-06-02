@@ -16,6 +16,8 @@ limitations under the License.
 
 package error
 
+import "errors"
+
 // ErrResourceNotOwnedByNsqAdmin is used as part of the Event 'reason' when nsqadmin resource fails
 // to sync due to a Deployment/ConfigMap of the same name already existing.
 var ErrResourceNotOwnedByNsqAdmin = "ErrResourceNotOwnedByNsqAdmin"
@@ -27,3 +29,6 @@ var ErrResourceNotOwnedByNsqLookupd = "ErrResourceNotOwnedByNsqLookupd"
 // ErrResourceNotOwnedByNsqd is used as part of the Event 'reason' when nsqd resource fails
 // to sync due to a StatefulSet/ConfigMap of the same name already existing.
 var ErrResourceNotOwnedByNsqd = "ErrResourceNotOwnedByNsqd"
+
+// ErrNoNeedToUpdateNsqdReplica means that no replica update needed for nsqd against nsqdscale
+var ErrNoNeedToUpdateNsqdReplica = errors.New("ErrNoNeedToUpdateNsqdReplica")

@@ -297,16 +297,18 @@ type NsqCreateRequest struct {
 	NsqAdminSpec   v1alpha1.NsqAdminSpec
 	NsqLookupdSpec v1alpha1.NsqLookupdSpec
 	NsqdSpec       v1alpha1.NsqdSpec
+	NsqdScaleSpec  v1alpha1.NsqdScaleSpec
 
 	NsqdConfig *NsqdConfigRequest
 }
 
-func NewNsqCreateRequest(nsqdConfig *NsqdConfigRequest,
-	nds v1alpha1.NsqdSpec, nls v1alpha1.NsqLookupdSpec, nas v1alpha1.NsqAdminSpec) *NsqCreateRequest {
+func NewNsqCreateRequest(nsqdConfig *NsqdConfigRequest, nds v1alpha1.NsqdSpec, nls v1alpha1.NsqLookupdSpec,
+	ndss v1alpha1.NsqdScaleSpec, nas v1alpha1.NsqAdminSpec) *NsqCreateRequest {
 	return &NsqCreateRequest{
 		NsqdSpec:       nds,
 		NsqLookupdSpec: nls,
 		NsqAdminSpec:   nas,
+		NsqdScaleSpec:  ndss,
 		NsqdConfig:     nsqdConfig,
 	}
 }
@@ -318,6 +320,16 @@ func (ncr *NsqCreateRequest) AssembleNsqd() *v1alpha1.Nsqd {
 			Namespace: ncr.NsqdConfig.Namespace,
 		},
 		Spec: ncr.NsqdSpec,
+	}
+}
+
+func (ncr *NsqCreateRequest) AssembleNsqdScale() *v1alpha1.NsqdScale {
+	return &v1alpha1.NsqdScale{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ncr.NsqdConfig.Name,
+			Namespace: ncr.NsqdConfig.Namespace,
+		},
+		Spec: ncr.NsqdScaleSpec,
 	}
 }
 
@@ -374,7 +386,7 @@ func (ndr *NsqDeleteRequest) SetWaitTimeout(wt time.Duration) {
 	ndr.WaitTimeout = &wt
 }
 
-type NsqAdminScaleRequest struct {
+type NsqAdminReplicaUpdateRequest struct {
 	Name      string
 	Namespace string
 	Replicas  int32
@@ -382,8 +394,8 @@ type NsqAdminScaleRequest struct {
 	WaitTimeout *time.Duration
 }
 
-func NewNsqAdminScaleRequest(name string, namespace string, replicas int32) *NsqAdminScaleRequest {
-	return &NsqAdminScaleRequest{
+func NewNsqAdminReplicaUpdateRequest(name string, namespace string, replicas int32) *NsqAdminReplicaUpdateRequest {
+	return &NsqAdminReplicaUpdateRequest{
 		Name:      name,
 		Namespace: namespace,
 		Replicas:  replicas,
@@ -392,11 +404,11 @@ func NewNsqAdminScaleRequest(name string, namespace string, replicas int32) *Nsq
 	}
 }
 
-func (nasr *NsqAdminScaleRequest) SetWaitTimeout(wt time.Duration) {
+func (nasr *NsqAdminReplicaUpdateRequest) SetWaitTimeout(wt time.Duration) {
 	nasr.WaitTimeout = &wt
 }
 
-type NsqLookupdScaleRequest struct {
+type NsqLookupdReplicaUpdateRequest struct {
 	Name      string
 	Namespace string
 	Replicas  int32
@@ -404,8 +416,8 @@ type NsqLookupdScaleRequest struct {
 	WaitTimeout *time.Duration
 }
 
-func NewNsqLookupdScaleRequest(name string, namespace string, replicas int32) *NsqLookupdScaleRequest {
-	return &NsqLookupdScaleRequest{
+func NewNsqLookupdReplicaUpdateRequest(name string, namespace string, replicas int32) *NsqLookupdReplicaUpdateRequest {
+	return &NsqLookupdReplicaUpdateRequest{
 		Name:      name,
 		Namespace: namespace,
 		Replicas:  replicas,
@@ -414,11 +426,11 @@ func NewNsqLookupdScaleRequest(name string, namespace string, replicas int32) *N
 	}
 }
 
-func (nlsr *NsqLookupdScaleRequest) SetWaitTimeout(wt time.Duration) {
+func (nlsr *NsqLookupdReplicaUpdateRequest) SetWaitTimeout(wt time.Duration) {
 	nlsr.WaitTimeout = &wt
 }
 
-type NsqdScaleRequest struct {
+type NsqdReplicaUpdateRequest struct {
 	Name      string
 	Namespace string
 	Replicas  int32
@@ -426,8 +438,8 @@ type NsqdScaleRequest struct {
 	WaitTimeout *time.Duration
 }
 
-func NewNsqdScaleRequest(name string, namespace string, replicas int32) *NsqdScaleRequest {
-	return &NsqdScaleRequest{
+func NewNsqdReplicaUpdateRequest(name string, namespace string, replicas int32) *NsqdReplicaUpdateRequest {
+	return &NsqdReplicaUpdateRequest{
 		Name:      name,
 		Namespace: namespace,
 		Replicas:  replicas,
@@ -436,48 +448,8 @@ func NewNsqdScaleRequest(name string, namespace string, replicas int32) *NsqdSca
 	}
 }
 
-func (ndsr *NsqdScaleRequest) SetWaitTimeout(wt time.Duration) {
+func (ndsr *NsqdReplicaUpdateRequest) SetWaitTimeout(wt time.Duration) {
 	ndsr.WaitTimeout = &wt
-}
-
-type NsqdAddChannelRequest struct {
-	Name      string
-	Namespace string
-
-	WaitTimeout *time.Duration
-}
-
-func NewNsqdAddChannelRequest(name string, namespace string) *NsqdAddChannelRequest {
-	return &NsqdAddChannelRequest{
-		Name:      name,
-		Namespace: namespace,
-
-		WaitTimeout: &waitTimeout,
-	}
-}
-
-func (ndac *NsqdAddChannelRequest) SetWaitTimeout(wt time.Duration) {
-	ndac.WaitTimeout = &wt
-}
-
-type NsqdDeleteChannelRequest struct {
-	Name      string
-	Namespace string
-
-	WaitTimeout *time.Duration
-}
-
-func NewNsqdDeleteChannelRequest(name string, namespace string) *NsqdDeleteChannelRequest {
-	return &NsqdDeleteChannelRequest{
-		Name:      name,
-		Namespace: namespace,
-
-		WaitTimeout: &waitTimeout,
-	}
-}
-
-func (nddc *NsqdDeleteChannelRequest) SetWaitTimeout(wt time.Duration) {
-	nddc.WaitTimeout = &wt
 }
 
 type NsqAdminUpdateImageRequest struct {
@@ -544,4 +516,31 @@ func NewNsqdUpdateImageRequest(name string, namespace string, image string) *Nsq
 
 func (nduir *NsqdUpdateImageRequest) SetWaitTimeout(wt time.Duration) {
 	nduir.WaitTimeout = &wt
+}
+
+type NsqdScaleUpdateRequest struct {
+	Name         string
+	Namespace    string
+	QpsThreshold int32
+	Minimum      int32
+	Maximum      int32
+
+	WaitTimeout *time.Duration
+}
+
+func NewNsqdScaleUpdateRequest(name string, namespace string, qpsThreshold int32,
+	minimum int32, maximum int32) *NsqdScaleUpdateRequest {
+	return &NsqdScaleUpdateRequest{
+		Name:         name,
+		Namespace:    namespace,
+		QpsThreshold: qpsThreshold,
+		Minimum:      minimum,
+		Maximum:      maximum,
+
+		WaitTimeout: &waitTimeout,
+	}
+}
+
+func (ndsur *NsqdScaleUpdateRequest) SetWaitTimeout(wt time.Duration) {
+	ndsur.WaitTimeout = &wt
 }

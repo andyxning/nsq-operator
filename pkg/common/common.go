@@ -36,6 +36,10 @@ func NsqAdminLogMountPath(cluster string) string {
 	return fmt.Sprintf("/var/log/%s/", cluster)
 }
 
+func QpsReporterLogDir(cluster string) string {
+	return fmt.Sprintf("/var/log/%s/$(POD_NAME)", cluster)
+}
+
 func QpsReporterLogMountPath(cluster string) string {
 	return fmt.Sprintf("/var/log/%s/", cluster)
 }

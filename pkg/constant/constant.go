@@ -33,3 +33,11 @@ const (
 
 	NsqConfigMapAnnotationKey = "configmap/signature"
 )
+
+type NsqdScaleOperation int
+
+const (
+	Unknown NsqdScaleOperation = iota
+	ScaleUp
+	ScaleDown
+)

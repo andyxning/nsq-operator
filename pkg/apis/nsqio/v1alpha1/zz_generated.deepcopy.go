@@ -353,9 +353,19 @@ func (in *NsqdScaleStatus) DeepCopyInto(out *NsqdScaleStatus) {
 	*out = *in
 	if in.Qpses != nil {
 		in, out := &in.Qpses, &out.Qpses
-		*out = make(map[string]Qps, len(*in))
+		*out = make(map[string][]Qps, len(*in))
 		for key, val := range *in {
-			(*out)[key] = *val.DeepCopy()
+			var outVal []Qps
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = make([]Qps, len(*in))
+				for i := range *in {
+					(*in)[i].DeepCopyInto(&(*out)[i])
+				}
+			}
+			(*out)[key] = outVal
 		}
 	}
 	return

@@ -139,13 +139,17 @@ func main() {
 					kubeInformerFactory.Core().V1().ConfigMaps(),
 					nsqInformerFactory.Nsq().V1alpha1().Nsqds())
 
+				nsqdScaleController := controller.NewNsqdScaleController(opts, kubeClient, nsqClient,
+					nsqInformerFactory.Nsq().V1alpha1().NsqdScales(),
+					nsqInformerFactory.Nsq().V1alpha1().Nsqds())
+
 				// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 				// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
 				kubeInformerFactory.Start(stopCh)
 				nsqInformerFactory.Start(stopCh)
 
 				wg := sync.WaitGroup{}
-				wg.Add(3)
+				wg.Add(4)
 
 				go func() {
 					defer wg.Done()
@@ -168,6 +172,14 @@ func main() {
 
 					if err = nsqdController.Run(opts.NsqdControllerWorker, stopCh); err != nil {
 						klog.Fatalf("Error running nsqd controller: %v", err)
+					}
+				}()
+
+				go func() {
+					defer wg.Done()
+
+					if err = nsqdScaleController.Run(opts.NsqdScaleControllerWorker, stopCh); err != nil {
+						klog.Fatalf("Error running nsqdscale controller: %v", err)
 					}
 				}()
 
