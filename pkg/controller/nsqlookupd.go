@@ -704,11 +704,13 @@ func (nlc *NsqLookupdController) handleObject(obj interface{}) {
 		}
 		klog.V(4).Infof("Recovered deleted object '%s/%s' from tombstone", object.GetNamespace(), object.GetName())
 	}
-	klog.V(4).Infof("Processing object %s/%s", object.GetNamespace(), object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
+		klog.V(4).Infof("Processing object %v %s/%s", reflect.TypeOf(object), object.GetNamespace(), object.GetName())
 		// If this object is not owned by a NsqLookupd, we should not do anything more
 		// with it.
 		if ownerRef.Kind != nsqio.NsqLookupdKind {
+			klog.V(4).Infof("Owner reference is not %s. Filter object %v %s/%s", nsqio.NsqLookupdKind,
+				reflect.TypeOf(object), object.GetNamespace(), object.GetName())
 			return
 		}
 

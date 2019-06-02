@@ -51,7 +51,7 @@ func main() {
 	var memoryQueueSize int32 = 10000
 	var memoryOverSalePercent int32 = 50
 	var channelCount int32 = 0
-	var qpsThreshold int32 = 40000 // 40k
+	var qpsThreshold int32 = 30000 // 30k
 	var minimum int32 = 1
 	var maximum int32 = 4
 

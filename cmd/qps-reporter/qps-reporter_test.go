@@ -66,12 +66,10 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			Desc: "topic not found",
 			Handler: http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 				topicStats := types.TopicStats{
-					Data: types.Data{
-						Version:   "1.0.0",
-						Health:    "OK",
-						StartTime: 123,
-						Topics:    []nsqd.TopicStats{},
-					},
+					Version:   "1.0.0",
+					Health:    "OK",
+					StartTime: 123,
+					Topics:    []nsqd.TopicStats{},
 				}
 				content, err := json.Marshal(topicStats)
 				if err != nil {
@@ -89,15 +87,13 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			Desc: "topic not found",
 			Handler: http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 				topicStats := types.TopicStats{
-					Data: types.Data{
-						Version:   "1.0.0",
-						Health:    "OK",
-						StartTime: 123,
-						Topics: []nsqd.TopicStats{
-							{
-								TopicName:    "test",
-								MessageCount: 100,
-							},
+					Version:   "1.0.0",
+					Health:    "OK",
+					StartTime: 123,
+					Topics: []nsqd.TopicStats{
+						{
+							TopicName:    "test",
+							MessageCount: 100,
 						},
 					},
 				}
