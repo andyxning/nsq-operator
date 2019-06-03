@@ -110,9 +110,13 @@ func NewNsqdScaleController(opts *options.Options, kubeClientSet kubernetes.Inte
 			newNDS := new.(*nsqv1alpha1.NsqdScale)
 			oldNDS := old.(*nsqv1alpha1.NsqdScale)
 
-			if !reflect.DeepEqual(oldNDS.Spec, newNDS.Spec) {
-				controller.handleObject(new)
+			if newNDS.ResourceVersion == oldNDS.ResourceVersion {
+				// Periodic re-sync will send update events for all known deployments.
+				// Two different versions of the same deployment will always have different RVs.
+				return
 			}
+
+			controller.handleObject(new)
 		},
 	})
 
@@ -382,7 +386,7 @@ func (ndsc *NsqdScaleController) handleObject(obj interface{}) {
 		}
 		klog.V(4).Infof("Recovered deleted object '%s/%s' from tombstone", object.GetNamespace(), object.GetName())
 	}
-	klog.V(4).Infof("Processing object %s/%s", object.GetNamespace(), object.GetName())
+	klog.V(4).Infof("Processing object %v %s/%s", reflect.TypeOf(object), object.GetNamespace(), object.GetName())
 	nds, err := ndsc.nsqdScaleLister.NsqdScales(object.GetNamespace()).Get(object.GetName())
 	if err != nil {
 		klog.Errorf("Get nsqdscale %s/%s error: %v. Ignore check", object.GetNamespace(), object.GetName(), err)
@@ -419,29 +423,36 @@ func (ndsc *NsqdScaleController) computeReplica(nds *nsqv1alpha1.NsqdScale) (rep
 
 	if validItemCount == 0 {
 		klog.Warningf("No valid nsqd qps data counted for nsqdscale %s/%s", nds.Namespace, nds.Name)
-		return replica, constant.Unknown, fmt.Errorf("zero valid nsqd qps data counted")
+		return replica, constant.Unknown, nsqerror.ErrNoNeedToUpdateNsqdReplica
 	}
 
-	wantedQPS := validItemCount * int64(nds.Spec.QpsThreshold)
-	qpsDiff := qpsSum - wantedQPS
-	replicaDiff := int32(math.Ceil(float64(qpsDiff) / float64(nds.Spec.QpsThreshold)))
+	qpsAvg := int64(math.Ceil(float64(qpsSum) / float64(validItemCount)))
+	qpsDiff := qpsAvg - int64(nds.Spec.QpsThreshold)
+	klog.V(2).Infof("Counted qps avg: %d, wanted qps threshold: %d, qps diff: %d", qpsAvg, nds.Spec.QpsThreshold, qpsDiff)
+	var replicaDiff int32
+	if qpsDiff > 0 {
+		replicaDiff = int32(math.Ceil(float64(qpsDiff) / float64(nds.Spec.QpsThreshold)))
+	} else {
+		replicaDiff = int32(math.Ceil(float64(qpsDiff*int64(nd.Spec.Replicas))) / float64(nds.Spec.QpsThreshold))
+	}
 	if replicaDiff == 0 {
 		klog.Infof("No need to update replica for nsqd %s/%s", nds.Namespace, nds.Name)
 		return replica, constant.Unknown, nsqerror.ErrNoNeedToUpdateNsqdReplica
 	}
 
-	klog.Infof("Update replica by adding %d for nsqd %s/%s", replicaDiff, nds.Namespace, nds.Name)
+	klog.Infof("Update replica by adding %d for nsqd %s/%s. Current replica is %d",
+		replicaDiff, nds.Namespace, nds.Name, nd.Spec.Replicas)
 	replica = nd.Spec.Replicas + replicaDiff
 
 	if replica > nds.Spec.Maximum {
-		klog.Infof("Align to maximum %d for nsqdscale %s/%s. Actually needed replica is %d",
-			nds.Spec.Maximum, nds.Namespace, nds.Name, replica)
+		klog.Infof("Align to maximum %d for nsqdscale %s/%s",
+			nds.Spec.Maximum, nds.Namespace, nds.Name)
 		replica = nds.Spec.Maximum
 	}
 
 	if replica < nds.Spec.Minimum {
-		klog.Infof("Align to minimum %d for nsqdscale %s/%s. Actually needed replica is %d",
-			nds.Spec.Maximum, nds.Namespace, nds.Name, replica)
+		klog.Infof("Align to minimum %d for nsqdscale %s/%s",
+			nds.Spec.Minimum, nds.Namespace, nds.Name)
 		replica = nds.Spec.Minimum
 	}
 

@@ -19,10 +19,6 @@ package types
 import "github.com/nsqio/nsq/nsqd"
 
 type TopicStats struct {
-	Data Data `json:"data"`
-}
-
-type Data struct {
 	Version   string            `json:"version"`
 	Health    string            `json:"health"`
 	StartTime int64             `json:"start_time"`

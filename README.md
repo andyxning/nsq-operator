@@ -35,10 +35,12 @@ There is a [sdk](pkg/sdk/v1alpha1) which can be used to CRUD nsq related resourc
 |----------|---------------------------
 | [create_cluster.go](pkg/sdk/examples/create_cluster.go) | Create a NSQ cluster
 | [delete_cluster.go](pkg/sdk/examples/delete_cluster.go) | Delete a NSQ cluster
-| [scale_nsqadmin.go](pkg/sdk/examples/scale_nsqadmin.go) | Scale a NSQ cluster's nsqadmin resource object
-| [scale_nsqlookupd.go](pkg/sdk/examples/scale_nsqlookupd.go) | Scale a NSQ cluster's nsqlookupd resource object
-| [scale_nsqd.go](pkg/sdk/examples/scale_nsqd.go) | Scale a NSQ cluster's nsqd resource object
+| [update_nsqadmin_replica.go](pkg/sdk/examples/update_nsqadmin_replica.go) | Update nsqadmin resource object replica
+| [update_nsqlookupd_replica.go](pkg/sdk/examples/update_nsqlookupd_replica.go) | Update nsqlookupd resource object replica
+| [update_nsqd_replica.go](pkg/sdk/examples/update_nsqd_replica.go) | Update nsqd resource object replica
+| [adjust_nsqd_config.go](pkg/sdk/examples/adjust_nsqd_config.go) | Adjust nsqd command line arguments
 | [adjust_nsqd_memory_resource.go](pkg/sdk/examples/adjust_nsqd_memory_resource.go) | Adjust nsqd resource object's memory resource limits/requests
+| [adjust_nsqdscale.go](pkg/sdk/examples/adjust_nsqdscale.go) | Adjust nsqdscale resource object
 | [bump_nsqadmin_image.go](pkg/sdk/examples/bump_nsqadmin_image.go) | Update a NSQ cluster's nsqadmin image
 | [bump_nsqlookupd_image.go](pkg/sdk/examples/bump_nsqlookupd_image.go) | Update a NSQ cluster's nsqlookupd image
 | [bump_nsqd_image.go](pkg/sdk/examples/bump_nsqd_image.go) | Update a NSQ cluster's nsqd image

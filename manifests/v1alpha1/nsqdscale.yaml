@@ -26,9 +26,9 @@ spec:
               maximum: 80000 # 80k
             minimum:
               type: integer
-              minimum: 1
+              minimum: 2 # high availability
               maximum: 1024
             maximum:
               type: integer
-              minimum: 1
+              minimum: 2
               maximum: 1024

@@ -129,7 +129,7 @@ func main() {
 				if qps < 0 {
 					klog.Warningf("Ignore update qps for topic %q. Message count diff is negative. Maybe nsqd has been restarted",
 						opts.Topic)
-					break
+					goto update
 				}
 
 				nsqdQPS := v1alpha1.Qps{
@@ -147,6 +147,7 @@ func main() {
 				isFirstStart = false
 			}
 
+		update:
 			klog.V(2).Infof("Update preMessageCount from %d to %d, preUpdateTime(UTC) from %d to %d",
 				preMessageCount, messageCount, preUpdateTime.Unix(), now.Unix())
 			preMessageCount = messageCount
@@ -198,12 +199,12 @@ func queryNsqdMessageCount(opts *options.Options) (messageCount uint64, err erro
 		return 0, err
 	}
 
-	if len(topicStats.Data.Topics) < 1 {
+	if len(topicStats.Topics) < 1 {
 		klog.Errorf("Nsqd stats api for topic %q does not exist", opts.Topic)
 		return 0, fmt.Errorf("nsqd stats api for topic %q does not exist", opts.Topic)
 	}
 
-	return topicStats.Data.Topics[0].MessageCount, nil
+	return topicStats.Topics[0].MessageCount, nil
 }
 
 func updateNsqdScaleStatus(nsqclientset *nsqclientset.Clientset, qps v1alpha1.Qps, opts *options.Options) error {

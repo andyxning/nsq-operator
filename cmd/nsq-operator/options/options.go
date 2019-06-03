@@ -140,9 +140,9 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.qpsReporterMemoryRequest, "qps-reporter-mem-request", "100Mi", "Memory request resource value for a qps-reporter instance")
 	pflag.StringVar(&o.qpsReporterCPURequest, "qps-reporter-cpu-request", "100m", "CPU request resource value for a qps-reporter instance")
 
-	pflag.DurationVar(&o.NsqdScaleValidDuration, "nsqd-scale-valid-duration", 40*time.Second, "Time duration during which qps is valid and counted")
-	pflag.DurationVar(&o.NsqdScaleUpSilenceDuration, "nsqd-scale-up-silence-duration", 90*time.Second, "Time duration during which second scale up is not allowed")
-	pflag.DurationVar(&o.NsqdScaleDownSilenceDuration, "nsqd-scale-down-silence-duration", 90*time.Second, "Time duration during which second scale down is ont allowed")
+	pflag.DurationVar(&o.NsqdScaleValidDuration, "nsqd-scale-valid-duration", 60*time.Second, "Time duration during which qps is valid and counted")
+	pflag.DurationVar(&o.NsqdScaleUpSilenceDuration, "nsqd-scale-up-silence-duration", 180*time.Second, "Time duration during which second scale up is not allowed")
+	pflag.DurationVar(&o.NsqdScaleDownSilenceDuration, "nsqd-scale-down-silence-duration", 180*time.Second, "Time duration during which second scale down is ont allowed")
 }
 
 func (o *Options) MustParse() {
