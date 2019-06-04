@@ -87,6 +87,9 @@ type Options struct {
 	NsqdScaleUpSilenceDuration   time.Duration
 	NsqdScaleDownSilenceDuration time.Duration
 
+	NsqdScaleUpdationLRUCacheSize int
+	NsqdScaleUpdationLRUCacheTTL  time.Duration
+
 	Version bool
 }
 
@@ -143,6 +146,9 @@ func (o *Options) MustRegisterFlags() {
 	pflag.DurationVar(&o.NsqdScaleValidDuration, "nsqd-scale-valid-duration", 60*time.Second, "Time duration during which qps is valid and counted")
 	pflag.DurationVar(&o.NsqdScaleUpSilenceDuration, "nsqd-scale-up-silence-duration", 180*time.Second, "Time duration during which second scale up is not allowed")
 	pflag.DurationVar(&o.NsqdScaleDownSilenceDuration, "nsqd-scale-down-silence-duration", 180*time.Second, "Time duration during which second scale down is ont allowed")
+
+	pflag.IntVar(&o.NsqdScaleUpdationLRUCacheSize, "nsqd-scale-updation-lru-cache-size", 102400, "Updation LRU cache size when deduplicate nsqdscale updates")
+	pflag.DurationVar(&o.NsqdScaleUpdationLRUCacheTTL, "nsqd-scale-updation-lru-cache-ttl", 15*time.Second, "Updation LRU cache ttl when deduplicate nsqdscale updates")
 }
 
 func (o *Options) MustParse() {

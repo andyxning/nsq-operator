@@ -38,6 +38,7 @@ import (
 
 	nsqclientset "github.com/andyxning/nsq-operator/pkg/generated/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
+	apimachinerycache "k8s.io/apimachinery/pkg/util/cache"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -72,6 +73,8 @@ type NsqdScaleController struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+
+	updationLRUCache *apimachinerycache.LRUExpireCache
 }
 
 // NewNsqdScaleController returns a new NsqdScale controller.
@@ -91,15 +94,16 @@ func NewNsqdScaleController(opts *options.Options, kubeClientSet kubernetes.Inte
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: constant.NsqdScaleControllerName})
 
 	controller := &NsqdScaleController{
-		opts:            opts,
-		kubeClientSet:   kubeClientSet,
-		nsqClientSet:    nsqClientSet,
-		nsqdScaleLister: nsqdScaleInformer.Lister(),
-		nsqdScaleSynced: nsqdScaleInformer.Informer().HasSynced,
-		nsqdLister:      nsqdInformer.Lister(),
-		nsqdSynced:      nsqdInformer.Informer().HasSynced,
-		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), nsqio.NsqdScaleKind),
-		recorder:        recorder,
+		opts:             opts,
+		kubeClientSet:    kubeClientSet,
+		nsqClientSet:     nsqClientSet,
+		nsqdScaleLister:  nsqdScaleInformer.Lister(),
+		nsqdScaleSynced:  nsqdScaleInformer.Informer().HasSynced,
+		nsqdLister:       nsqdInformer.Lister(),
+		nsqdSynced:       nsqdInformer.Informer().HasSynced,
+		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), nsqio.NsqdScaleKind),
+		recorder:         recorder,
+		updationLRUCache: apimachinerycache.NewLRUExpireCache(opts.NsqdScaleUpdationLRUCacheSize),
 	}
 
 	klog.Info("Setting up event handlers for nsqdscale controller")
@@ -114,6 +118,24 @@ func NewNsqdScaleController(opts *options.Options, kubeClientSet kubernetes.Inte
 				// Periodic re-sync will send update events for all known deployments.
 				// Two different versions of the same deployment will always have different RVs.
 				return
+			}
+
+			if reflect.DeepEqual(newNDS.Spec, oldNDS.Spec) {
+				// Status update
+				var key string
+				var err error
+				if key, err = cache.MetaNamespaceKeyFunc(new); err != nil {
+					utilruntime.HandleError(err)
+					return
+				}
+
+				if _, exists := controller.updationLRUCache.Get(key); exists {
+					klog.V(2).Infof("Ignore status updation for nsqdscale %s/%s within %v",
+						newNDS.Namespace, newNDS.Name, opts.NsqdScaleUpdationLRUCacheTTL)
+					return
+				}
+
+				controller.updationLRUCache.Add(key, struct{}{}, opts.NsqdScaleUpdationLRUCacheTTL)
 			}
 
 			controller.handleObject(new)
