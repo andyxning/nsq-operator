@@ -430,7 +430,7 @@ func (ndsc *NsqdScaleController) computeReplica(nds *nsqv1alpha1.NsqdScale) (rep
 	now := time.Now()
 	var qpsSum int64
 	var validItemCount int64
-	for nsqdName, qpses := range nds.Status.Qpses {
+	for nsqdName, qpses := range nds.Status.Metas {
 		for _, qps := range qpses {
 			if qps.LastUpdateTime.Add(ndsc.opts.NsqdScaleValidDuration).After(now) {
 				klog.V(2).Infof("nsqd %s/%s qps data %+v is valid", nds.Namespace, nsqdName, qps)

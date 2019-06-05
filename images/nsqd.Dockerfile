@@ -14,6 +14,6 @@ RUN apk update && apk add --no-cache bash bash-doc bash-completion curl
 
 COPY ./scripts /usr/local/bin/
 COPY ./bin /usr/local/bin/
-COPY ./qps-reporter /usr/local/bin/
+COPY ./reporter /usr/local/bin/
 
 ENTRYPOINT ["start_nsqd.sh"]

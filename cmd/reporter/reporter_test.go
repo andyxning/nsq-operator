@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andyxning/nsq-operator/cmd/qps-reporter/options"
-	"github.com/andyxning/nsq-operator/cmd/qps-reporter/types"
+	"github.com/andyxning/nsq-operator/cmd/reporter/options"
+	"github.com/andyxning/nsq-operator/cmd/reporter/types"
 	"github.com/nsqio/nsq/nsqd"
 )
 
@@ -34,6 +34,7 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 		Handler            http.Handler
 		WantedError        bool
 		WantedMessageCount uint64
+		WantedDepth        int64
 	}{
 		{
 			Desc: "timeout",
@@ -42,6 +43,7 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			}),
 			WantedError:        true,
 			WantedMessageCount: 0,
+			WantedDepth:        0,
 		},
 		{
 			Desc: "non 200 response status code",
@@ -50,6 +52,7 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			}),
 			WantedError:        true,
 			WantedMessageCount: 0,
+			WantedDepth:        0,
 		},
 		{
 			Desc: "invalid json",
@@ -61,6 +64,7 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			}),
 			WantedError:        true,
 			WantedMessageCount: 0,
+			WantedDepth:        0,
 		},
 		{
 			Desc: "topic not found",
@@ -82,9 +86,10 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			}),
 			WantedError:        true,
 			WantedMessageCount: 0,
+			WantedDepth:        0,
 		},
 		{
-			Desc: "topic not found",
+			Desc: "one topic, two channels",
 			Handler: http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 				topicStats := types.TopicStats{
 					Version:   "1.0.0",
@@ -92,8 +97,22 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 					StartTime: 123,
 					Topics: []nsqd.TopicStats{
 						{
+							Channels: []nsqd.ChannelStats{
+								{
+									ChannelName:  "ch1",
+									Depth:        1,
+									BackendDepth: 1,
+								},
+								{
+									ChannelName:  "ch2",
+									Depth:        2,
+									BackendDepth: 2,
+								},
+							},
 							TopicName:    "test",
 							MessageCount: 100,
+							Depth:        100,
+							BackendDepth: 100,
 						},
 					},
 				}
@@ -108,6 +127,7 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			}),
 			WantedError:        false,
 			WantedMessageCount: 100,
+			WantedDepth:        100 + 100 + 1 + 1 + 2 + 2,
 		},
 	}
 
@@ -121,12 +141,15 @@ func TestQueryNsqdMessageCount(t *testing.T) {
 			opts.HttpRequestTimeout = time.Second
 			opts.NsqdApiAddress = server.URL
 
-			messageCount, err := queryNsqdMessageCount(&opts)
+			messageCount, depth, err := queryNsqdStats(&opts)
 			if (ut.WantedError && err == nil) || (!ut.WantedError && err != nil) {
 				t.Errorf("Desc: %q. Wanted error: %v, got error: %v", ut.Desc, ut.WantedError, err)
 			}
 			if ut.WantedMessageCount != messageCount {
-				t.Errorf("Desc: %q. Wanted messageCount: %v, got error: %v", ut.Desc, ut.WantedMessageCount, messageCount)
+				t.Errorf("Desc: %q. Wanted messageCount: %v, got: %v", ut.Desc, ut.WantedMessageCount, messageCount)
+			}
+			if ut.WantedDepth != depth {
+				t.Errorf("Desc: %q. Wanted depth: %v, got: %v", ut.Desc, ut.WantedDepth, depth)
 			}
 		}()
 	}
