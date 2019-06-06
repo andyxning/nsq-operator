@@ -882,7 +882,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 							},
 						},
 						{
-							Name:  "qps-reporter",
+							Name:  "reporter",
 							Image: nd.Spec.Image,
 							Env: []corev1.EnvVar{
 								{
@@ -906,7 +906,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 									Value: nd.Name,
 								},
 							},
-							Command: []string{"qps-reporter", "--alsologtostderr=false", "--logtostderr=false", fmt.Sprintf("--log_dir=%s", common.QpsReporterLogDir(nd.Name))},
+							Command: []string{"reporter", "--alsologtostderr=false", "--logtostderr=false", fmt.Sprintf("--log_dir=%s", common.QpsReporterLogDir(nd.Name))},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      constant.LogVolumeName,

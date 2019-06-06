@@ -123,5 +123,5 @@ venv.bak/
 .idea/
 /cmd/nsq-operator/nsq-operator
 /nsq-operator
-/qps-reporter
-/images/qps-reporter
+/reporter
+/images/reporter

@@ -84,14 +84,15 @@ type NsqdScaleSpec struct {
 
 // NsqdScaleStatus is the status for a NsqdScale resource
 type NsqdScaleStatus struct {
-	LastScaleUpTime   metav1.Time      `json:"lastScaleUpTime"`
-	LastScaleDownTime metav1.Time      `json:"lastScaleDownTime"`
-	Qpses             map[string][]Qps `json:"qpses"`
+	LastScaleUpTime   metav1.Time       `json:"lastScaleUpTime"`
+	LastScaleDownTime metav1.Time       `json:"lastScaleDownTime"`
+	Metas             map[string][]Meta `json:"metas"`
 }
 
-type Qps struct {
+type Meta struct {
 	LastUpdateTime metav1.Time `json:"lastUpdateTime"`
 	Qps            int64       `json:"qps"`
+	Depth          int64       `json:"depth"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
