@@ -32,3 +32,5 @@ spec:
               type: integer
               minimum: 2
               maximum: 1024
+            enabled:
+              type: boolean

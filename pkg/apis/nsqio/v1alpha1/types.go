@@ -80,6 +80,7 @@ type NsqdScaleSpec struct {
 	QpsThreshold int32 `json:"qpsThreshold"`
 	Minimum      int32 `json:"minimum"`
 	Maximum      int32 `json:"maximum"`
+	Enabled      bool  `json:"enabled"`
 }
 
 // NsqdScaleStatus is the status for a NsqdScale resource

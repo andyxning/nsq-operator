@@ -6,3 +6,4 @@ spec:
   qpsThreshold: 30000
   minimum: 2
   maximum: 4
+  enabled: false

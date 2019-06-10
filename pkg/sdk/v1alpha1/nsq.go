@@ -293,7 +293,7 @@ func CreateCluster(kubeClient *kubernetes.Clientset, nsqClient *versioned.Client
 
 	// Create nsqdscale
 	nsqdScale := ncr.AssembleNsqdScale()
-	klog.Infof("Create nsqdscale %s/%s", nsqdScale.Namespace, nsqdScale.Name)
+	klog.Infof("Create nsqdscale %s/%s: %+v", nsqdScale.Namespace, nsqdScale.Name, nsqdScale)
 	_, err = nsqClient.NsqV1alpha1().NsqdScales(nsqdScale.Namespace).Create(nsqdScale)
 	if errors.IsAlreadyExists(err) {
 		klog.Infof("Nsqdscale %s/%s exists. Update it", nsqdScale.Namespace, nsqdScale.Name)
@@ -1101,6 +1101,7 @@ func AdjustNsqdScale(nsqClient *versioned.Clientset, ndsur *types.NsqdScaleUpdat
 		nsqdScaleCopy.Spec.QpsThreshold = ndsur.QpsThreshold
 		nsqdScaleCopy.Spec.Minimum = ndsur.Minimum
 		nsqdScaleCopy.Spec.Maximum = ndsur.Maximum
+		nsqdScaleCopy.Spec.Enabled = ndsur.Enabled
 		_, err = nsqClient.NsqV1alpha1().NsqdScales(ndsur.Namespace).Update(nsqdScaleCopy)
 		if err != nil {
 			klog.Errorf("Update nsqdscale %s/%s error: %v", ndsur.Namespace, ndsur.Name, err)

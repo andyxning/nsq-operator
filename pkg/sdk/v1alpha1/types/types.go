@@ -524,18 +524,20 @@ type NsqdScaleUpdateRequest struct {
 	QpsThreshold int32
 	Minimum      int32
 	Maximum      int32
+	Enabled      bool
 
 	WaitTimeout *time.Duration
 }
 
 func NewNsqdScaleUpdateRequest(name string, namespace string, qpsThreshold int32,
-	minimum int32, maximum int32) *NsqdScaleUpdateRequest {
+	minimum int32, maximum int32, enabled bool) *NsqdScaleUpdateRequest {
 	return &NsqdScaleUpdateRequest{
 		Name:         name,
 		Namespace:    namespace,
 		QpsThreshold: qpsThreshold,
 		Minimum:      minimum,
 		Maximum:      maximum,
+		Enabled:      enabled,
 
 		WaitTimeout: &waitTimeout,
 	}
