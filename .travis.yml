@@ -11,11 +11,16 @@ install:
 
 jobs:
   include:
-    # fmt
+    - stage: All
     - script: make fmt
-    # vet
+      name: "fmt check"
     - script: make vet
-    # Unit Test
+      name: "vet check"
+    - script: make verify-codegen
+      name: "verify whether codegen is up to date"
     - script: make test
-    # Build
+      name: "unit test"
+    - script: make reporter
+      name: "build reporter"
     - script: make build
+      name: "build nsq-operator"
