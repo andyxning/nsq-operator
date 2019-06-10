@@ -263,6 +263,11 @@ func (ndsc *NsqdScaleController) syncHandler(key string) error {
 		return err
 	}
 
+	if !nds.Spec.Enabled {
+		klog.Infof("Nsqdscale %s/%s is not enabled. Ignore reconcile", nds.Namespace, nds.Name)
+		return nil
+	}
+
 	replica, operation, err := ndsc.computeReplica(nds)
 	if err != nil && err != nsqerror.ErrNoNeedToUpdateNsqdReplica {
 		klog.Errorf("Compute replica for nsqd %s/%s error: %v", nds.Namespace, nds.Name, err)
@@ -478,9 +483,13 @@ func (ndsc *NsqdScaleController) computeReplica(nds *nsqv1alpha1.NsqdScale) (rep
 		replica = nds.Spec.Minimum
 	}
 
-	if replicaDiff > 0 {
-		return replica, constant.ScaleUp, nil
+	if replica != nd.Spec.Replicas {
+		if replicaDiff > 0 {
+			return replica, constant.ScaleUp, nil
+		}
+
+		return replica, constant.ScaleDown, nil
 	}
 
-	return replica, constant.ScaleDown, nil
+	return replica, constant.Unknown, nsqerror.ErrNoNeedToUpdateNsqdReplica
 }

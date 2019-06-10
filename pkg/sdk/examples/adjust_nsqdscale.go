@@ -31,14 +31,16 @@ func main() {
 	var minimum int32
 	var maximum int32
 	var qpsThreshold int32
+	var enabled bool
 
 	common.RegisterFlags()
 
 	pflag.StringVar(&name, "name", "solo", "Cluster name")
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
 	pflag.Int32Var(&qpsThreshold, "qps-threshold", 40000, "Metas threshold before autoscaling")
-	pflag.Int32Var(&minimum, "minimum", 1, "Minimum nsqd instances")
+	pflag.Int32Var(&minimum, "minimum", 2, "Minimum nsqd instances")
 	pflag.Int32Var(&maximum, "maximum", 4, "Maximum nsqd instances")
+	pflag.BoolVar(&enabled, "enabled", false, "Whether nsqdscale is enabled")
 
 	common.Parse()
 
@@ -47,7 +49,7 @@ func main() {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	ndsur := types.NewNsqdScaleUpdateRequest(name, namespace, qpsThreshold, minimum, maximum)
+	ndsur := types.NewNsqdScaleUpdateRequest(name, namespace, qpsThreshold, minimum, maximum, enabled)
 
 	// Customize wait timeout
 	//wt := 180 * time.Second

@@ -52,8 +52,9 @@ func main() {
 	var memoryOverSalePercent int32 = 50
 	var channelCount int32 = 0
 	var qpsThreshold int32 = 30000 // 30k
-	var minimum int32 = 1
+	var minimum int32 = 2
 	var maximum int32 = 4
+	var enabled = false
 
 	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
 	ndcr.ApplyDefaults()
@@ -75,6 +76,7 @@ func main() {
 		QpsThreshold: qpsThreshold,
 		Minimum:      minimum,
 		Maximum:      maximum,
+		Enabled:      enabled,
 	}
 
 	nls := v1alpha1.NsqLookupdSpec{
