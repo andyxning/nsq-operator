@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0]
+
+### Added
+- Qps based hpa for nsqd
+
+### Changed
+- Delete nsqd pods when qps and depth are both zero
+
+### Removed
+-
+
+### Fixed
+- Move code-generator from git submodule to normal directory
+
 ## [v0.4.0]
 
 ### Added
