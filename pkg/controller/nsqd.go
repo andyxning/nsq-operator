@@ -124,6 +124,13 @@ func NewNsqdController(opts *options.Options, kubeClientSet kubernetes.Interface
 	nsqInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueNsqd,
 		UpdateFunc: func(old, new interface{}) {
+			newNsqd := new.(*nsqv1alpha1.Nsqd)
+			oldNsqd := old.(*nsqv1alpha1.Nsqd)
+			if newNsqd.ResourceVersion == oldNsqd.ResourceVersion && newNsqd.Spec.Replicas == newNsqd.Status.AvailableReplicas {
+				// Periodic resync will send update events for all known StatefulSets.
+				// Two different versions of the same StatefulSet will always have different RVs.
+				return
+			}
 			controller.enqueueNsqd(new)
 		},
 	})
@@ -446,7 +453,46 @@ func (ndc *NsqdController) syncHandler(key string) error {
 	// number does not equal the current desired replicas on the StatefulSet, we
 	// should update the StatefulSet resource. If the image changes, we also should update
 	// the deployment resource.
+	klog.V(2).Infof("nsqd %s/%s replica: %v, statefulset %s/%s replicas: %v", nd.Namespace, nd.Name, nd.Spec.Replicas,
+		statefulSet.Namespace, statefulSet.Name, *statefulSet.Spec.Replicas)
 	if (nd.Spec.Replicas != *statefulSet.Spec.Replicas) || (nd.Spec.Image != statefulSet.Spec.Template.Spec.Containers[0].Image) {
+		if nd.Spec.Replicas < *statefulSet.Spec.Replicas {
+			nds, err := ndc.nsqClientSet.NsqV1alpha1().NsqdScales(nd.Namespace).Get(nd.Name, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Get nsqdscale %s/%s error: %v", nd.Namespace, nd.Name, err)
+				return err
+			}
+
+			if len(nds.Status.Metas) >= int(*statefulSet.Spec.Replicas) {
+				for i := *statefulSet.Spec.Replicas - 1; i >= nd.Spec.Replicas; i-- {
+					nsqdInstanceName := fmt.Sprintf("%s-%d", common.NsqdStatefulSetName(nd.Name), i)
+					if value, exists := nds.Status.Metas[nsqdInstanceName]; exists {
+						cleared := true
+						for _, meta := range value {
+							if !(meta.Qps == 0 && meta.Depth == 0) {
+								klog.Warningf("Qps/Depth for %s/%s is not zero: %+v", nd.Namespace, nsqdInstanceName, meta)
+								cleared = false
+								break
+							}
+						}
+
+						if !cleared {
+							klog.Warningf("Waiting for %s/%s qps/depth reach zero", nd.Namespace, nd.Name)
+							return nil
+						}
+
+						klog.V(2).Infof("Qps/Depth for %s/%s is zero. Clear", nd.Namespace, nsqdInstanceName)
+					} else {
+						klog.Warningf("Missing qps/depth for %s/%s", nd.Namespace, nd.Name)
+						return nil
+					}
+				}
+			} else {
+				klog.Warningf("Some nsqd meta data are not updated to nsqdscale %s/%s", nd.Namespace, nd.Name)
+				return nil
+			}
+		}
+
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Retrieve the latest version of statefulset before attempting update
 			// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver

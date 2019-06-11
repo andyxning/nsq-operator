@@ -61,7 +61,7 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.InstanceName, "instance-name", os.Getenv("POD_NAME"), "Instance name")
 	pflag.StringVar(&o.Namespace, "namespace", os.Getenv("POD_NAMESPACE"), "Pod namespace")
 	pflag.DurationVar(&o.HttpRequestTimeout, "http-request-timeout", 2*time.Second, "Http request timeout")
-	pflag.DurationVar(&o.UpdatePeriod, "update-period", 10*time.Second, "Message count check/qps update period")
+	pflag.DurationVar(&o.UpdatePeriod, "update-period", 20*time.Second, "Message count check/qps update period")
 	pflag.IntVar(&o.PreservedQpsCount, "preserved-qps-count", 3, "Preserved qps record count per nsqd instance for nsqdscale")
 
 	pflag.BoolVar(&o.DryRun, "dry-run", false, "Print qps update info to stdout instead of updating nsqdscale resource")
