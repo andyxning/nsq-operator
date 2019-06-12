@@ -1040,7 +1040,7 @@ func AdjustNsqdMemoryResources(nsqClient *versioned.Clientset, ndcr *types.NsqdC
 		nsqdCopy := nsqd.DeepCopy()
 		nsqdCopy.Spec.MessageAvgSize = ndcr.GetMessageAvgSize()
 		nsqdCopy.Spec.MemoryQueueSize = ndcr.GetMemoryQueueSize()
-		nsqdCopy.Spec.MemoryOverSalePercent = ndcr.GetMemoryOverSalePercent()
+		nsqdCopy.Spec.MemoryOverBookingPercent = ndcr.GetMemoryOverBookingPercent()
 		nsqdCopy.Spec.ChannelCount = ndcr.GetChannelCount()
 
 		_, err = nsqClient.NsqV1alpha1().Nsqds(ndcr.Namespace).Update(nsqdCopy)
@@ -1068,7 +1068,7 @@ func AdjustNsqdMemoryResources(nsqClient *versioned.Clientset, ndcr *types.NsqdC
 
 		if !(nsqd.Status.MessageAvgSize == ndcr.MessageAvgSize &&
 			nsqd.Status.MemoryQueueSize == ndcr.MemoryQueueSize &&
-			nsqd.Status.MemoryOverSalePercent == ndcr.MemoryOverSalePercent &&
+			nsqd.Status.MemoryOverBookingPercent == ndcr.MemoryOverBookingPercent &&
 			nsqd.Status.ChannelCount == ndcr.ChannelCount) {
 			klog.Errorf("Waiting for nsqd %s/%s status reaches its spec", ndcr.Namespace, ndcr.Name)
 			return

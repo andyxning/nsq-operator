@@ -38,7 +38,7 @@ func main() {
 
 	var messageAvgSize int32 = 1024 // 1ki
 	var memoryQueueSize int32 = 10000
-	var memoryOverSalePercent int32 = 50
+	var memoryOverBookingPercent int32 = 50
 	var channelCount int32 = 0
 
 	common.Parse()
@@ -48,7 +48,7 @@ func main() {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverBookingPercent, channelCount)
 	ndcr.ApplyDefaults()
 	ndcr.SetSnappy(snappy)
 

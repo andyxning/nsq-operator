@@ -561,7 +561,7 @@ func (ndc *NsqdController) syncHandler(key string) error {
 
 	}
 
-	if !(nd.Spec.MemoryOverSalePercent == nd.Status.MemoryOverSalePercent &&
+	if !(nd.Spec.MemoryOverBookingPercent == nd.Status.MemoryOverBookingPercent &&
 		nd.Spec.MessageAvgSize == nd.Status.MessageAvgSize &&
 		nd.Spec.MemoryQueueSize == nd.Status.MemoryQueueSize &&
 		nd.Spec.ChannelCount == nd.Status.ChannelCount) {
@@ -667,7 +667,7 @@ func (ndc *NsqdController) updateNsqdStatus(nd *nsqv1alpha1.Nsqd, statefulSet *a
 		// Or create a copy manually for better performance
 		ndCopy := ndOld.DeepCopy()
 		ndCopy.Status.AvailableReplicas = nd.Spec.Replicas
-		ndCopy.Status.MemoryOverSalePercent = nd.Spec.MemoryOverSalePercent
+		ndCopy.Status.MemoryOverBookingPercent = nd.Spec.MemoryOverBookingPercent
 		ndCopy.Status.MessageAvgSize = nd.Spec.MessageAvgSize
 		ndCopy.Status.MemoryQueueSize = nd.Spec.MemoryQueueSize
 		ndCopy.Status.ChannelCount = nd.Spec.ChannelCount
@@ -805,7 +805,7 @@ func (ndc *NsqdController) computeNsqdMemoryResource(nd *nsqv1alpha1.Nsqd) (requ
 	singleMemUsage := int64(nd.Spec.MessageAvgSize) * int64(nd.Spec.MemoryQueueSize)
 
 	standardTotalMem := count * singleMemUsage
-	AdjustedTotalMem := float64(standardTotalMem) * (1 + float64(nd.Spec.MemoryOverSalePercent)/100.0)
+	AdjustedTotalMem := float64(standardTotalMem) * (1 + float64(nd.Spec.MemoryOverBookingPercent)/100.0)
 
 	request = resource.MustParse(fmt.Sprintf("%vMi", int64(math.Ceil(AdjustedTotalMem/1024.0/1024.0))))
 	limit = request

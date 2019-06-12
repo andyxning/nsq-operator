@@ -16,7 +16,7 @@ some feedback.
 * Scale nsqd/nsqlookupd/nsqadmin components separately
 * Update nsqd/nsqlookupd/nsqadmin image separately
 * Adjust nsqd command line arguments
-* Adjust nsqd pods memory resource according to average message size, memory queue size, memory oversale percent and channel count
+* Adjust nsqd pods memory resource according to average message size, memory queue size, memory overbooking percent and channel count
 * Log Management. 
   * Rotate log by [logrotate](https://linux.die.net/man/8/logrotate) hourly
   * Mount log directory to a dedicated host machine directory in nsqd/nsqlookupd/nsqadmin spec

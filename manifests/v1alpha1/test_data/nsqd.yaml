@@ -9,5 +9,5 @@ spec:
   logMappingDir: /var/log/test
   messageAvgSize: 1048576   # 1Mi
   memoryQueueSize: 10000
-  memoryOverSalePercent: 50
+  memoryOverBookingPercent: 50
   channelCount: 0
