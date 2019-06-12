@@ -34,23 +34,23 @@ type Nsqd struct {
 
 // NsqdSpec is the spec for a Nsqd resource
 type NsqdSpec struct {
-	Image                 string `json:"image"`
-	Replicas              int32  `json:"replicas"`
-	StorageClassName      string `json:"storageClassName"`
-	LogMappingDir         string `json:"logMappingDir"`
-	MessageAvgSize        int32  `json:"messageAvgSize"`
-	MemoryOverSalePercent int32  `json:"memoryOverSalePercent"`
-	MemoryQueueSize       int32  `json:"memoryQueueSize"`
-	ChannelCount          int32  `json:"channelCount"`
+	Image                    string `json:"image"`
+	Replicas                 int32  `json:"replicas"`
+	StorageClassName         string `json:"storageClassName"`
+	LogMappingDir            string `json:"logMappingDir"`
+	MessageAvgSize           int32  `json:"messageAvgSize"`
+	MemoryOverBookingPercent int32  `json:"memoryOverBookingPercent"`
+	MemoryQueueSize          int32  `json:"memoryQueueSize"`
+	ChannelCount             int32  `json:"channelCount"`
 }
 
 // NsqdStatus is the status for a Nsqd resource
 type NsqdStatus struct {
-	AvailableReplicas     int32 `json:"availableReplicas"`
-	MessageAvgSize        int32 `json:"messageAvgSize"`
-	MemoryOverSalePercent int32 `json:"memoryOverSalePercent"`
-	MemoryQueueSize       int32 `json:"memoryQueueSize"`
-	ChannelCount          int32 `json:"channelCount"`
+	AvailableReplicas        int32 `json:"availableReplicas"`
+	MessageAvgSize           int32 `json:"messageAvgSize"`
+	MemoryOverBookingPercent int32 `json:"memoryOverBookingPercent"`
+	MemoryQueueSize          int32 `json:"memoryQueueSize"`
+	ChannelCount             int32 `json:"channelCount"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

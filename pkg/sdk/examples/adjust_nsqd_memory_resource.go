@@ -30,7 +30,7 @@ func main() {
 	var namespace string
 	var messageAvgSize int32
 	var memoryQueueSize int32
-	var memoryOverSalePercent int32
+	var memoryOverBookingPercent int32
 	var channelCount int32 = 2
 
 	common.RegisterFlags()
@@ -39,7 +39,7 @@ func main() {
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
 	pflag.Int32Var(&messageAvgSize, "message_avg_size", 1204, "Average message size")
 	pflag.Int32Var(&memoryQueueSize, "memory_queue_size", 10000, "Memory queue size")
-	pflag.Int32Var(&memoryOverSalePercent, "memory_oversale_percent", 50, "Memory oversale percent")
+	pflag.Int32Var(&memoryOverBookingPercent, "memory_overbooking_percent", 50, "Memory overbooking percent")
 	pflag.Int32Var(&channelCount, "channel_count", 1, "Channel count")
 
 	common.Parse()
@@ -49,7 +49,7 @@ func main() {
 		klog.Fatalf("Init clients error: %v", err)
 	}
 
-	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverBookingPercent, channelCount)
 	ndcr.ApplyDefaults()
 
 	// Customize wait timeout

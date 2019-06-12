@@ -49,27 +49,27 @@ func main() {
 	var nsqAdminReplicas int32 = 2
 	var messageAvgSize int32 = 1024 // 1ki
 	var memoryQueueSize int32 = 10000
-	var memoryOverSalePercent int32 = 50
+	var memoryOverBookingPercent int32 = 50
 	var channelCount int32 = 0
 	var qpsThreshold int32 = 30000 // 30k
 	var minimum int32 = 2
 	var maximum int32 = 4
 	var enabled = false
 
-	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverSalePercent, channelCount)
+	ndcr := types.NewNsqdConfigRequest(name, namespace, messageAvgSize, memoryQueueSize, memoryOverBookingPercent, channelCount)
 	ndcr.ApplyDefaults()
 	// Customize nsqd config
 	//ndcr.SetMaxBodySize(1024 * 1024 * 10)
 
 	nds := v1alpha1.NsqdSpec{
-		Image:                 "dockerops123/nsqd:1.1.0",
-		Replicas:              nsqdReplicas,
-		StorageClassName:      "standard",
-		LogMappingDir:         fmt.Sprintf("/var/log/%s", name),
-		MessageAvgSize:        ndcr.GetMessageAvgSize(),
-		MemoryQueueSize:       ndcr.GetMemoryQueueSize(),
-		MemoryOverSalePercent: ndcr.GetMemoryOverSalePercent(),
-		ChannelCount:          ndcr.GetChannelCount(),
+		Image:                    "dockerops123/nsqd:1.1.0",
+		Replicas:                 nsqdReplicas,
+		StorageClassName:         "standard",
+		LogMappingDir:            fmt.Sprintf("/var/log/%s", name),
+		MessageAvgSize:           ndcr.GetMessageAvgSize(),
+		MemoryQueueSize:          ndcr.GetMemoryQueueSize(),
+		MemoryOverBookingPercent: ndcr.GetMemoryOverBookingPercent(),
+		ChannelCount:             ndcr.GetChannelCount(),
 	}
 
 	ndss := v1alpha1.NsqdScaleSpec{

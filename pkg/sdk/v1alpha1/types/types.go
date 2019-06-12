@@ -29,12 +29,12 @@ import (
 )
 
 type NsqdConfigRequest struct {
-	Name                  string
-	Namespace             string
-	MessageAvgSize        int32
-	MemoryQueueSize       int32
-	MemoryOverSalePercent int32
-	ChannelCount          int32
+	Name                     string
+	Namespace                string
+	MessageAvgSize           int32
+	MemoryQueueSize          int32
+	MemoryOverBookingPercent int32
+	ChannelCount             int32
 
 	DataPath               *string
 	MaxBodySize            *int32
@@ -54,20 +54,20 @@ type NsqdConfigRequest struct {
 }
 
 func NewNsqdConfigRequest(name string, namespace string, messageAvgSize int32, memoryQueueSize int32,
-	memoryOverSalePercent int32, channelCount int32) *NsqdConfigRequest {
+	memoryOverBookingPercent int32, channelCount int32) *NsqdConfigRequest {
 	return &NsqdConfigRequest{
-		Name:                  name,
-		Namespace:             namespace,
-		MessageAvgSize:        messageAvgSize,
-		MemoryQueueSize:       memoryQueueSize,
-		MemoryOverSalePercent: memoryOverSalePercent,
-		ChannelCount:          channelCount,
+		Name:                     name,
+		Namespace:                namespace,
+		MessageAvgSize:           messageAvgSize,
+		MemoryQueueSize:          memoryQueueSize,
+		MemoryOverBookingPercent: memoryOverBookingPercent,
+		ChannelCount:             channelCount,
 	}
 }
 
 func (ndcr *NsqdConfigRequest) String() string {
-	return fmt.Sprintf("Name: %v, Namespace: %v, MessageAvgSize: %v, MemoryQueueSize: %v, MemoryOverSalePercent: %v, "+
-		"ChannelCount: %v", ndcr.Name, ndcr.Namespace, ndcr.MessageAvgSize, ndcr.MemoryQueueSize, ndcr.MemoryOverSalePercent,
+	return fmt.Sprintf("Name: %v, Namespace: %v, MessageAvgSize: %v, MemoryQueueSize: %v, MemoryOverBookingPercent: %v, "+
+		"ChannelCount: %v", ndcr.Name, ndcr.Namespace, ndcr.MessageAvgSize, ndcr.MemoryQueueSize, ndcr.MemoryOverBookingPercent,
 		ndcr.ChannelCount)
 }
 
@@ -135,8 +135,8 @@ func (ndcr *NsqdConfigRequest) GetChannelCount() int32 {
 	return ndcr.ChannelCount
 }
 
-func (ndcr *NsqdConfigRequest) GetMemoryOverSalePercent() int32 {
-	return ndcr.MemoryOverSalePercent
+func (ndcr *NsqdConfigRequest) GetMemoryOverBookingPercent() int32 {
+	return ndcr.MemoryOverBookingPercent
 }
 
 func (ndcr *NsqdConfigRequest) GetMemoryQueueSize() int32 {

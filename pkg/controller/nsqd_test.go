@@ -24,40 +24,40 @@ import (
 
 func TestComputeNsqdMemoryResource(t *testing.T) {
 	cases := []struct {
-		Desc                  string
-		MessageAvgSize        int32
-		MemoryOverSalePercent int32
-		MemoryQueueSize       int32
-		ChannelCount          int32
-		WantedRequest         string
-		WantedLimit           string
+		Desc                     string
+		MessageAvgSize           int32
+		MemoryOverBookingPercent int32
+		MemoryQueueSize          int32
+		ChannelCount             int32
+		WantedRequest            string
+		WantedLimit              string
 	}{
 		{
-			Desc:                  "topic 1, channel 0",
-			MessageAvgSize:        123,
-			MemoryQueueSize:       10000,
-			MemoryOverSalePercent: 50,
-			ChannelCount:          0,
-			WantedRequest:         "2Mi",
-			WantedLimit:           "2Mi",
+			Desc:                     "topic 1, channel 0",
+			MessageAvgSize:           123,
+			MemoryQueueSize:          10000,
+			MemoryOverBookingPercent: 50,
+			ChannelCount:             0,
+			WantedRequest:            "2Mi",
+			WantedLimit:              "2Mi",
 		},
 		{
-			Desc:                  "topic 1, channel 1",
-			MessageAvgSize:        234,
-			MemoryQueueSize:       567,
-			MemoryOverSalePercent: 30,
-			ChannelCount:          1,
-			WantedRequest:         "1Mi",
-			WantedLimit:           "1Mi",
+			Desc:                     "topic 1, channel 1",
+			MessageAvgSize:           234,
+			MemoryQueueSize:          567,
+			MemoryOverBookingPercent: 30,
+			ChannelCount:             1,
+			WantedRequest:            "1Mi",
+			WantedLimit:              "1Mi",
 		},
 		{
-			Desc:                  "topic 1, channel 1024(Overflow int32)",
-			MessageAvgSize:        1024,
-			MemoryQueueSize:       10000,
-			MemoryOverSalePercent: 100,
-			ChannelCount:          1024,
-			WantedRequest:         "20020Mi",
-			WantedLimit:           "20020Mi",
+			Desc:                     "topic 1, channel 1024(Overflow int32)",
+			MessageAvgSize:           1024,
+			MemoryQueueSize:          10000,
+			MemoryOverBookingPercent: 100,
+			ChannelCount:             1024,
+			WantedRequest:            "20020Mi",
+			WantedLimit:              "20020Mi",
 		},
 	}
 
@@ -65,10 +65,10 @@ func TestComputeNsqdMemoryResource(t *testing.T) {
 	for _, ut := range cases {
 		nd := &v1alpha1.Nsqd{
 			Spec: v1alpha1.NsqdSpec{
-				MessageAvgSize:        ut.MessageAvgSize,
-				MemoryOverSalePercent: ut.MemoryOverSalePercent,
-				MemoryQueueSize:       ut.MemoryQueueSize,
-				ChannelCount:          ut.ChannelCount,
+				MessageAvgSize:           ut.MessageAvgSize,
+				MemoryOverBookingPercent: ut.MemoryOverBookingPercent,
+				MemoryQueueSize:          ut.MemoryQueueSize,
+				ChannelCount:             ut.ChannelCount,
 			},
 		}
 		memRequest, memLimit := ndc.computeNsqdMemoryResource(nd)
