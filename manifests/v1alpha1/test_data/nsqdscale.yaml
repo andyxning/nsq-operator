@@ -3,7 +3,7 @@ kind: NsqdScale
 metadata:
   name: test
 spec:
-  qpsThreshold: 30000
+  qpsThreshold: 15000
   minimum: 2
   maximum: 4
   enabled: false
