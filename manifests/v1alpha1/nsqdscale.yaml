@@ -23,7 +23,7 @@ spec:
             qpsThreshold:
               type: integer
               minimum: 1
-              maximum: 80000 # 80k
+              maximum: 64000 # 64k
             minimum:
               type: integer
               minimum: 2 # high availability
