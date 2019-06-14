@@ -122,7 +122,7 @@ func (o *Options) MustRegisterFlags() {
 
 	pflag.Int64Var(&o.NsqAdminTerminationGracePeriodSeconds, "nsqadmin-termination-grace-period-seconds", 60, "Termination grace period seconds for nsqadmin resource object")
 	pflag.Int64Var(&o.NsqLookupdTerminationGracePeriodSeconds, "nsqlookupd-termination-grace-period-seconds", 60, "Termination grace period seconds for nsqlookupd resource object")
-	pflag.Int64Var(&o.NsqdTerminationGracePeriodSeconds, "nsqd-termination-grace-period-seconds", 300, "Termination grace period seconds for nsqd resource object")
+	pflag.Int64Var(&o.NsqdTerminationGracePeriodSeconds, "nsqd-termination-grace-period-seconds", 259200, "Termination grace period seconds for nsqd resource object")
 
 	pflag.StringVar(&o.nsqAdminMemoryLimit, "nsqadmin-mem-limit", "200Mi", "Memory limit resource value for a nsqadmin instance")
 	pflag.StringVar(&o.nsqAdminCPULimit, "nsqadmin-cpu-limit", "300m", "CPU limit resource value for a nsqadmin instance")
