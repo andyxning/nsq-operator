@@ -887,7 +887,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 									MountPath: common.NsqdLogMountPath(nd.Name),
 								},
 							},
-							ImagePullPolicy: corev1.PullAlways,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    ndc.opts.NsqdCPULimitResource,
@@ -959,7 +959,7 @@ func (ndc *NsqdController) newStatefulSet(nd *nsqv1alpha1.Nsqd, configMapHash st
 									MountPath: common.QpsReporterLogMountPath(nd.Name),
 								},
 							},
-							ImagePullPolicy: corev1.PullAlways,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    ndc.opts.QpsReporterCPULimitResource,

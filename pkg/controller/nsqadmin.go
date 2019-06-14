@@ -669,7 +669,7 @@ func (nac *NsqAdminController) newDeployment(na *nsqv1alpha1.NsqAdmin, configMap
 									MountPath: common.NsqAdminLogMountPath(na.Name),
 								},
 							},
-							ImagePullPolicy: corev1.PullAlways,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    nac.opts.NsqAdminCPULimitResource,
