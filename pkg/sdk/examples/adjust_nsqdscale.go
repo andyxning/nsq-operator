@@ -37,7 +37,7 @@ func main() {
 
 	pflag.StringVar(&name, "name", "solo", "Cluster name")
 	pflag.StringVar(&namespace, "namespace", "default", "Cluster namespace")
-	pflag.Int32Var(&qpsThreshold, "qps-threshold", 40000, "Metas threshold before autoscaling")
+	pflag.Int32Var(&qpsThreshold, "qps-threshold", 15000, "Metas threshold before autoscaling")
 	pflag.Int32Var(&minimum, "minimum", 2, "Minimum nsqd instances")
 	pflag.Int32Var(&maximum, "maximum", 4, "Maximum nsqd instances")
 	pflag.BoolVar(&enabled, "enabled", false, "Whether nsqdscale is enabled")
