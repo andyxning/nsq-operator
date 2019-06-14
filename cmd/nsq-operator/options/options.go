@@ -134,8 +134,8 @@ func (o *Options) MustRegisterFlags() {
 	pflag.StringVar(&o.nsqLookupdMemoryRequest, "nsqlookupd-mem-request", "150Mi", "Memory request resource value for a nsqlookupd instance")
 	pflag.StringVar(&o.nsqLookupdCPURequest, "nsqlookupd-cpu-request", "250m", "CPU request resource value for a nsqlookupd instance")
 
-	pflag.StringVar(&o.nsqdCPULimit, "nsqd-cpu-limit", "300m", "CPU limit resource value for a nsqd instance")
-	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "300m", "CPU request resource value for a nsqd instance")
+	pflag.StringVar(&o.nsqdCPULimit, "nsqd-cpu-limit", "8000m", "CPU limit resource value for a nsqd instance")
+	pflag.StringVar(&o.nsqdCPURequest, "nsqd-cpu-request", "8000m", "CPU request resource value for a nsqd instance")
 	pflag.StringVar(&o.nsqdPVCStorageResource, "nsqd-pvc-storage-resource", "256Gi", "Storage resource value for a nsqd instance")
 
 	pflag.StringVar(&o.qpsReporterMemoryLimit, "reporter-mem-limit", "100Mi", "Memory limit resource value for a reporter instance")
