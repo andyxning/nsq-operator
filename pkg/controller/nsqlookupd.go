@@ -890,7 +890,7 @@ func (nlc *NsqLookupdController) newDeployment(nl *nsqv1alpha1.NsqLookupd, confi
 									MountPath: common.NsqLookupdLogMountPath(nl.Name),
 								},
 							},
-							ImagePullPolicy: corev1.PullAlways,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    nlc.opts.NsqLookupdCPULimitResource,
