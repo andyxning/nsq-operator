@@ -37,7 +37,7 @@ spec:
             MemoryOverBookingPercent:
               type: integer
               minimum: 0
-              maximum: 100
+              maximum: 200
             memoryQueueSize:
               type: integer
               minimum: 0
